@@ -1,0 +1,748 @@
+/**
+ * ============================================================================
+ * 韦特塔罗抽牌网页 —— 主样式文件
+ * ============================================================================
+ * 
+ * 配色方案：暗紫 + 金色
+ *   - 主背景：深紫黑渐变 (#0d0a1f → #1a0d3d)
+ *   - 强调色：金色 (#d4af37)
+ *   - 副强调：淡紫 (#9d4edd)
+ *   - 毛玻璃：半透明白 + blur
+ * 
+ * 如需修改颜色，调整下方 CSS 变量即可
+ * ============================================================================
+ */
+
+/* ==================== CSS 变量（方便统一修改主题） ==================== */
+:root {
+  /* 背景色 */
+  --bg-deep: #0d0a1f;        /* 最深的底色 */
+  --bg-mid: #1a0d3d;         /* 中间紫色 */
+  --bg-light: #2d1b4e;       /* 浅紫色层次 */
+  
+  /* 强调色 */
+  --gold: #d4af37;           /* 主金色 */
+  --gold-light: #f0d060;     /* 亮金色 */
+  --gold-dark: #b8960f;      /* 暗金色 */
+  
+  /* 紫色系 */
+  --purple-primary: #9d4edd; /* 主紫 */
+  --purple-light: #c77dff;   /* 亮紫 */
+  --purple-glass: rgba(157, 78, 221, 0.15); /* 毛玻璃紫 */
+  
+  /* 文字色 */
+  --text-white: #f0e6ff;
+  --text-muted: #a89cc0;
+  --text-gold: var(--gold);
+  
+  /* 毛玻璃 */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(212, 175, 55, 0.25);
+  --glass-blur: 12px;
+  
+  /* 字体 */
+  --font-serif: 'Georgia', 'Times New Roman', serif;
+  --font-sans: 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+
+/* ==================== 全局重置 ==================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--text-white);
+  line-height: 1.6;
+  
+  /* 深色星空背景 - 多层渐变叠加 */
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(157, 78, 221, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 80%, rgba(100, 50, 150, 0.2) 0%, transparent 50%),
+    linear-gradient(135deg, var(--bg-deep) 0%, var(--bg-mid) 50%, #0f0829 100%);
+  
+  /* 固定背景，不随滚动移动 */
+  background-attachment: fixed;
+  position: relative;
+}
+
+/* 星空层 - 使用伪元素生成星点 */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  
+  /* 生成星点背景（使用多个 radial-gradient） */
+  background-image: 
+    radial-gradient(1px 1px at 10% 15%, white, transparent),
+    radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.5px 1.5px at 50% 10%, white, transparent),
+    radial-gradient(1px 1px at 70% 25%, rgba(212,175,55,0.8), transparent),
+    radial-gradient(1px 1px at 85% 60%, white, transparent),
+    radial-gradient(1.5px 1.5px at 15% 75%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 40% 85%, white, transparent),
+    radial-gradient(1px 1px at 65% 70%, rgba(157,78,221,0.8), transparent),
+    radial-gradient(1px 1px at 90% 90%, white, transparent),
+    radial-gradient(1.5px 1.5px at 5% 50%, rgba(212,175,55,0.6), transparent),
+    radial-gradient(1px 1px at 35% 55%, white, transparent),
+    radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 75% 15%, white, transparent),
+    radial-gradient(1px 1px at 95% 40%, rgba(157,78,221,0.5), transparent),
+    radial-gradient(1.5px 1.5px at 30% 95%, white, transparent);
+  
+  /* 星星闪烁动画 */
+  animation: twinkle 4s ease-in-out infinite alternate;
+}
+
+/* 第二层星点 */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  
+  background-image: 
+    radial-gradient(1px 1px at 20% 5%, rgba(212,175,55,0.5), transparent),
+    radial-gradient(1px 1px at 60% 55%, white, transparent),
+    radial-gradient(1px 1px at 80% 80%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 45% 25%, rgba(157,78,221,0.6), transparent),
+    radial-gradient(1px 1px at 5% 85%, white, transparent),
+    radial-gradient(1px 1px at 95% 10%, rgba(212,175,55,0.4), transparent);
+  
+  animation: twinkle 6s ease-in-out infinite alternate-reverse;
+}
+
+/* 星星闪烁 keyframes */
+@keyframes twinkle {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* 主内容容器 - 确保在星空层之上 */
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px 60px;
+}
+
+
+/* ==================== 标题区 ==================== */
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.header h1 {
+  font-family: var(--font-serif);
+  font-size: 2.8rem;
+  color: var(--gold);
+  text-shadow: 
+    0 0 20px rgba(212, 175, 55, 0.4),
+    0 0 40px rgba(212, 175, 55, 0.2);
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+
+.header .subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* 金色分割线 */
+.divider {
+  width: 80px;
+  height: 2px;
+  margin: 20px auto;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+
+/* ==================== 通用卡片样式（毛玻璃效果） ==================== */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 24px;
+  box-shadow: 
+    0 4px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-card h2 {
+  font-family: var(--font-serif);
+  color: var(--gold);
+  font-size: 1.3rem;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+
+/* ==================== 牌阵选择区 ==================== */
+.spread-selector {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.spread-btn {
+  flex: 1;
+  min-width: 180px;
+  max-width: 250px;
+  padding: 18px 20px;
+  background: rgba(157, 78, 221, 0.1);
+  border: 2px solid rgba(157, 78, 221, 0.3);
+  border-radius: 12px;
+  color: var(--text-white);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  font-family: inherit;
+}
+
+.spread-btn:hover {
+  background: rgba(157, 78, 221, 0.2);
+  border-color: var(--purple-light);
+  transform: translateY(-2px);
+}
+
+.spread-btn.active {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(157, 78, 221, 0.2));
+  border-color: var(--gold);
+  box-shadow: 
+    0 0 20px rgba(212, 175, 55, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.spread-btn .icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.spread-btn .label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gold-light);
+}
+
+.spread-btn .desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+
+/* ==================== 问题输入区 ==================== */
+.question-section textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 14px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 10px;
+  color: var(--text-white);
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.question-section textarea:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+.question-section textarea::placeholder {
+  color: var(--text-muted);
+}
+
+
+/* ==================== 按钮样式 ==================== */
+.btn {
+  display: inline-block;
+  padding: 14px 36px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  color: var(--bg-deep);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+
+.btn-secondary:hover {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.btn-group {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+
+/* ==================== 抽牌区域 ==================== */
+.tarot-area {
+  text-align: center;
+  padding: 40px 20px;
+  min-height: 300px;
+}
+
+/* 牌堆 - 洗牌时显示 */
+.deck-area {
+  position: relative;
+  height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.deck-card {
+  width: 100px;
+  height: 160px;
+  position: absolute;
+  border-radius: 8px;
+  /* 牌背图案 - 使用渐变 + SVG样式 */
+  background: 
+    linear-gradient(135deg, #1a0d3d, #0d0a1f),
+    repeating-linear-gradient(45deg, 
+      transparent, transparent 8px, 
+      rgba(212, 175, 55, 0.1) 8px, rgba(212, 175, 55, 0.1) 10px);
+  background-blend-mode: overlay;
+  border: 2px solid var(--gold);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.5),
+    inset 0 0 20px rgba(212, 175, 55, 0.1);
+}
+
+/* 牌背图案上的装饰 */
+.deck-card::before {
+  content: '✦';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  color: var(--gold);
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+.deck-card::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 4px;
+}
+
+/* 牌堆中每张牌的偏移 */
+.deck-card:nth-child(1) { transform: translateX(-8px) rotate(-2deg); }
+.deck-card:nth-child(2) { transform: translateX(-4px) rotate(-1deg); }
+.deck-card:nth-child(3) { transform: translateX(0) rotate(0deg); }
+.deck-card:nth-child(4) { transform: translateX(4px) rotate(1deg); }
+.deck-card:nth-child(5) { transform: translateX(8px) rotate(2deg); }
+
+
+/* ==================== 洗牌动画 ==================== */
+@keyframes shuffle {
+  0% { transform: translateX(0) rotate(0deg); }
+  10% { transform: translateX(-60px) rotate(-8deg); }
+  25% { transform: translateX(60px) rotate(6deg); }
+  40% { transform: translateX(-40px) rotate(-4deg); }
+  55% { transform: translateX(40px) rotate(5deg); }
+  70% { transform: translateX(-20px) rotate(-2deg); }
+  85% { transform: translateX(20px) rotate(2deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+
+.shuffling .deck-card:nth-child(1) { animation: shuffle 0.6s ease-in-out infinite; }
+.shuffling .deck-card:nth-child(2) { animation: shuffle 0.6s ease-in-out infinite 0.05s; }
+.shuffling .deck-card:nth-child(3) { animation: shuffle 0.6s ease-in-out infinite 0.1s; }
+.shuffling .deck-card:nth-child(4) { animation: shuffle 0.6s ease-in-out infinite 0.15s; }
+.shuffling .deck-card:nth-child(5) { animation: shuffle 0.6s ease-in-out infinite 0.2s; }
+
+
+/* ==================== 卡牌3D容器 ==================== */
+.cards-display {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  perspective: 1000px; /* 3D视角距离 */
+  margin: 20px 0;
+}
+
+/* 每张卡的3D翻转容器 */
+.card-3d {
+  width: 160px;
+  height: 260px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 1s cubic-bezier(0.4, 0.2, 0.2, 1);
+  cursor: pointer;
+}
+
+.card-3d.flipped {
+  transform: rotateY(180deg);
+}
+
+/* 牌面/牌背 共有样式 */
+.card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  backface-visibility: hidden; /* 翻转时隐藏背面 */
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(212, 175, 55, 0.15);
+}
+
+/* 牌背 */
+.card-back {
+  /* 牌背图案 */
+  background: 
+    linear-gradient(135deg, #1a0d3d 0%, #2d1b4e 50%, #0d0a1f 100%),
+    repeating-linear-gradient(45deg, 
+      transparent, transparent 8px, 
+      rgba(212, 175, 55, 0.08) 8px, rgba(212, 175, 55, 0.08) 10px);
+  background-blend-mode: overlay;
+  border: 2px solid var(--gold);
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.card-back::before {
+  content: '✦';
+  font-size: 3.5rem;
+  color: var(--gold);
+  text-shadow: 
+    0 0 10px rgba(212, 175, 55, 0.6),
+    0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+.card-back::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 6px;
+}
+
+/* 牌面（图片） */
+.card-front {
+  background: var(--bg-light);
+  border: 2px solid var(--gold);
+  transform: rotateY(180deg); /* 初始翻转，隐藏 */
+  
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+}
+
+.card-front img {
+  width: 100%;
+  height: 75%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.card-front .card-name-cn {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gold);
+  text-align: center;
+}
+
+.card-front .card-name-en {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-style: italic;
+}
+
+/* 逆位卡牌 - 牌面上下翻转 */
+.card-3d.reversed .card-front img {
+  transform: rotate(180deg);
+}
+
+.card-3d.reversed .card-name-cn::after {
+  content: ' (逆)';
+  font-size: 0.7rem;
+  color: var(--purple-light);
+}
+
+
+/* ==================== 结果解读区 ==================== */
+.reading-result {
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reading-card {
+  padding: 16px;
+  margin-bottom: 14px;
+  background: rgba(157, 78, 221, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 10px;
+}
+
+.reading-card .position-label {
+  font-size: 0.85rem;
+  color: var(--purple-light);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.reading-card .card-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+
+.reading-card .orientation-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-left: 8px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.orientation-upright {
+  background: rgba(212, 175, 55, 0.2);
+  color: var(--gold);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.orientation-reversed {
+  background: rgba(157, 78, 221, 0.2);
+  color: var(--purple-light);
+  border: 1px solid rgba(157, 78, 221, 0.3);
+}
+
+.reading-card .meaning {
+  font-size: 0.9rem;
+  color: var(--text-white);
+  line-height: 1.7;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 2px solid var(--gold);
+  border-radius: 0 6px 6px 0;
+}
+
+
+/* ==================== 状态显示 ==================== */
+.status-message {
+  text-align: center;
+  padding: 16px;
+  color: var(--gold-light);
+  font-size: 1.05rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+
+/* ==================== 响应式 - 移动端适配 ==================== */
+@media (max-width: 768px) {
+  
+  .container {
+    padding: 24px 16px 40px;
+  }
+  
+  .header h1 {
+    font-size: 2rem;
+  }
+  
+  .glass-card {
+    padding: 20px;
+  }
+  
+  /* 卡牌尺寸缩小 */
+  .card-3d {
+    width: 130px;
+    height: 210px;
+  }
+  
+  .cards-display {
+    gap: 16px;
+  }
+  
+  .spread-btn {
+    min-width: 140px;
+    padding: 14px 12px;
+  }
+  
+  .spread-btn .icon {
+    font-size: 1.5rem;
+  }
+  
+  .spread-btn .label {
+    font-size: 1rem;
+  }
+  
+  .spread-btn .desc {
+    font-size: 0.75rem;
+  }
+  
+  /* 三牌阵在移动端缩小间距 */
+  .cards-display.three-spread {
+    gap: 12px;
+  }
+  
+  /* 结果解读字体缩小 */
+  .reading-card .meaning {
+    font-size: 0.85rem;
+  }
+  
+  .reading-card .card-title {
+    font-size: 1rem;
+  }
+  
+  /* 牌堆缩小 */
+  .deck-card {
+    width: 80px;
+    height: 128px;
+  }
+  
+  /* 按钮全宽 */
+  .btn-group {
+    flex-direction: column;
+  }
+  
+  .btn-group .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  
+  .header h1 {
+    font-size: 1.6rem;
+  }
+  
+  .header .subtitle {
+    font-size: 0.85rem;
+  }
+  
+  .card-3d {
+    width: 110px;
+    height: 178px;
+  }
+  
+  .card-front .card-name-cn {
+    font-size: 0.8rem;
+  }
+  
+  .card-front .card-name-en {
+    font-size: 0.6rem;
+  }
+}
+
+
+/* ==================== 隐藏类 ==================== */
+.hidden {
+  display: none !important;
+}
+
+
+/* ==================== 加载状态 ==================== */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* 图片加载失败时的 fallback */
+.card-front img[src=""] {
+  display: none;
+}
+
+.card-front img:not([src]), 
+.card-front img.broken {
+  display: none;
+}

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="韦特塔罗在线抽牌 - 纯静态前端，支持单牌日运和三牌阵（过去-现在-未来）">
+  <meta name="theme-color" content="#1a0d3d">
+  
+  <title>韦特塔罗 · 神秘抽牌</title>
+  
+  <!-- 主样式 -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- Favicon（使用 emoji 替代，也可以换成自定义图标） -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
+</head>
+
+<body>
+
+  <!-- ==================== 主容器 ==================== -->
+  <div class="container">
+    
+    <!-- ========== 1. 头部标题区 ========== -->
+    <header class="header">
+      <h1>✦ 韦特塔罗 ✦</h1>
+      <div class="subtitle">Mystical Tarot Reading</div>
+      <div class="divider"></div>
+      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 500px; margin: 0 auto;">
+        在星空下静心，让古老的塔罗牌为你指引方向。<br>
+        选择牌阵，输入你想探寻的问题，开启一次神秘之旅。
+      </p>
+    </header>
+    
+    
+    <!-- ========== 2. 牌阵选择区 ========== -->
+    <section class="glass-card" id="spread-section">
+      <h2>🕯️ 选择牌阵</h2>
+      
+      <div class="spread-selector">
+        <!-- 单牌日运 -->
+        <button class="spread-btn active" data-spread="single">
+          <span class="icon">🎴</span>
+          <span class="label">单牌日运</span>
+          <span class="desc">一张牌指引今日方向</span>
+        </button>
+        
+        <!-- 三牌阵 -->
+        <button class="spread-btn" data-spread="three">
+          <span class="icon">🔮</span>
+          <span class="label">三牌阵</span>
+          <span class="desc">过去 · 现在 · 未来</span>
+        </button>
+      </div>
+    </section>
+    
+    
+    <!-- ========== 3. 问题输入区 ========== -->
+    <section class="glass-card question-section">
+      <h2>💭 你想问什么？</h2>
+      
+      <textarea 
+        id="question" 
+        placeholder="静心冥想，输入你想探寻的问题...&#10;例如：我近期的事业会有怎样的变化？"
+        rows="3"
+      ></textarea>
+      
+      <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 8px;">
+        💡 提示：问题越具体，解读越有参考价值。按 Ctrl+Enter 可快捷开始。
+      </p>
+    </section>
+    
+    
+    <!-- ========== 4. 抽牌按钮区 ========== -->
+    <section class="glass-card" style="text-align: center;">
+      <div class="btn-group">
+        <button class="btn btn-primary" id="start-btn">
+          🔮 开始占卜
+        </button>
+        <button class="btn btn-secondary" id="reset-btn">
+          ♻️ 重置
+        </button>
+      </div>
+    </section>
+    
+    
+    <!-- ========== 5. 抽牌动画区 ========== -->
+    <section class="tarot-area glass-card" id="tarot-area">
+      
+      <!-- 状态消息 -->
+      <div class="status-message" id="status-message">
+        选择牌阵，输入问题，点击开始
+      </div>
+      
+      <!-- 牌堆（洗牌动画时显示） -->
+      <div class="deck-area" id="deck-area"></div>
+      
+      <!-- 卡牌展示区（抽牌后显示） -->
+      <div class="cards-display single-spread" id="cards-display"></div>
+      
+    </section>
+    
+    
+    <!-- ========== 6. 结果解读区 ========== -->
+    <section class="glass-card reading-result hidden" id="result-section">
+      <h2>📖 卡牌解读</h2>
+      <div id="result-content"></div>
+    </section>
+    
+    
+    <!-- ========== 页脚 ========== -->
+    <footer style="text-align: center; padding: 30px 0; color: var(--text-muted); font-size: 0.8rem;">
+      <div class="divider"></div>
+      <p>✦ 愿星辰指引你前行的路 ✦</p>
+      <p style="margin-top: 8px; opacity: 0.6;">
+        本网站仅供娱乐参考，人生的选择权永远在你手中
+      </p>
+    </footer>
+    
+  </div>
+  
+  <!-- ==================== 脚本引入 ==================== -->
+  <!-- 注意：顺序很重要！先数据文件，再应用逻辑 -->
+  <script src="js/tarot-data.js"></script>
+  <script src="js/app.js"></script>
+  
+</body>
+</html>
