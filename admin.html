@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a0d3d">
+  
+  <title>小应塔罗 · 管理后台</title>
+  
+  <!-- 复用主站样式，后台页面有一点额外样式在底部 -->
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* 登录页居中 */
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+    .login-card input[type="password"] {
+      width: 100%;
+      padding: 14px 16px;
+      margin-top: 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(212,175,55,0.25);
+      border-radius: 10px;
+      color: var(--text-white);
+      font-size: 1rem;
+      outline: none;
+    }
+    .login-card input[type="password"]:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 10px rgba(212,175,55,0.2);
+    }
+    
+    /* 后台顶部工具栏 */
+    .admin-toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .admin-toolbar .spacer { flex: 1; }
+    .admin-toolbar .api-status {
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.3);
+      color: var(--text-muted);
+    }
+    .admin-toolbar .api-status.ok { color: #4ade80; }
+    .admin-toolbar .api-status.err { color: #f87171; }
+    
+    /* 全局配置区 */
+    .global-config {
+      padding: 16px;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .slider-row label { min-width: 120px; color: var(--text-muted); font-size: 0.9rem; }
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--gold);
+    }
+    .slider-row .value {
+      min-width: 50px;
+      text-align: right;
+      color: var(--gold);
+      font-weight: 600;
+      font-family: var(--font-serif);
+    }
+    
+    /* 卡牌编辑区表格化布局 */
+    .card-editor-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 8px;
+    }
+    .card-editor-table th {
+      text-align: left;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      padding: 4px 10px;
+      letter-spacing: 0.05em;
+    }
+    .card-editor-table td {
+      padding: 8px 10px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(212,175,55,0.1);
+      font-size: 0.85rem;
+      vertical-align: top;
+    }
+    .card-editor-table tr td:first-child { border-radius: 6px 0 0 6px; }
+    .card-editor-table tr td:last-child  { border-radius: 0 6px 6px 0; }
+    
+    .card-editor-table .card-name {
+      min-width: 140px;
+      color: var(--gold);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .card-editor-table .card-name small {
+      display: block;
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 0.7rem;
+      font-style: italic;
+    }
+    .card-editor-table .wtd { min-width: 80px; text-align: center; }
+    
+    .card-editor-table input[type="number"],
+    .card-editor-table textarea {
+      width: 100%;
+      box-sizing: border-box;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(157,78,221,0.25);
+      border-radius: 6px;
+      color: var(--text-white);
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      resize: vertical;
+    }
+    .card-editor-table input[type="number"]:focus,
+    .card-editor-table textarea:focus {
+      border-color: var(--purple-light);
+      box-shadow: 0 0 6px rgba(157,78,221,0.25);
+    }
+    .card-editor-table textarea { min-height: 44px; }
+    
+    /* 搜索过滤 */
+    .filter-row {
+      margin-bottom: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-row input[type="text"] {
+      flex: 1;
+      min-width: 180px;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(212,175,55,0.2);
+      border-radius: 8px;
+      color: var(--text-white);
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .filter-row input[type="text"]:focus { border-color: var(--gold); }
+    
+    .filter-row button {
+      padding: 6px 14px;
+      background: transparent;
+      border: 1px solid rgba(157,78,221,0.3);
+      border-radius: 6px;
+      color: var(--purple-light);
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .filter-row button:hover { background: rgba(157,78,221,0.1); }
+    .filter-row button.active {
+      background: rgba(157,78,221,0.25);
+      border-color: var(--purple-light);
+      color: var(--text-white);
+    }
+    
+    /* 移动端 */
+    @media (max-width: 768px) {
+      .card-editor-table,
+      .card-editor-table thead,
+      .card-editor-table tbody,
+      .card-editor-table th,
+      .card-editor-table td,
+      .card-editor-table tr {
+        display: block;
+      }
+      .card-editor-table thead { display: none; }
+      .card-editor-table tr td {
+        border-radius: 6px !important;
+        margin-bottom: 8px;
+      }
+      .card-editor-table tr td:first-child {
+        padding-bottom: 4px;
+      }
+    }
+    
+    /* Toast 提示 */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.9);
+      border: 1px solid var(--gold);
+      border-radius: 8px;
+      padding: 12px 24px;
+      color: var(--gold);
+      font-size: 0.9rem;
+      z-index: 9999;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .toast.error { border-color: #f87171; color: #f87171; }
+  </style>
+</head>
+
+<body>
+
+<!-- ==================== 登录页 ==================== -->
+<div id="login-page" class="login-wrap">
+  <div class="glass-card login-card">
+    <div class="header" style="margin-bottom: 20px;">
+      <h1 style="font-size: 1.8rem;">🔐 管理后台</h1>
+      <div class="divider"></div>
+    </div>
+    <p style="color: var(--text-muted); font-size: 0.85rem;">请输入管理员密码</p>
+    <input type="password" id="login-password" placeholder="输入密码..." autocomplete="current-password">
+    <div class="btn-group">
+      <button class="btn btn-primary" id="login-btn" style="width:100%;">登录</button>
+    </div>
+    <p style="margin-top: 16px; font-size: 0.75rem; color: var(--text-muted); opacity: 0.7;">
+      <a href="index.html" style="color: var(--text-muted);">← 返回占卜首页</a>
+    </p>
+  </div>
+</div>
+
+<!-- ==================== 后台主界面（登录后显示） ==================== -->
+<div id="admin-page" style="display:none;">
+  <div class="container">
+    
+    <header class="header" style="margin-bottom: 24px;">
+      <h1 style="font-size: 1.8rem;">✦ 小应塔罗 · 后台 ✦</h1>
+      <div class="subtitle">Admin Control Panel</div>
+    </header>
+    
+    <!-- 工具栏 -->
+    <div class="admin-toolbar glass-card" style="margin-bottom: 20px;">
+      <span class="api-status" id="api-status">API: 检查中...</span>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" id="load-btn">📥 从云端加载</button>
+      <button class="btn btn-secondary" id="export-btn">💾 导出 JSON</button>
+      <button class="btn btn-secondary" id="logout-btn">🚪 退出</button>
+    </div>
+    
+    <!-- 全局配置：正位概率 -->
+    <section class="glass-card global-config">
+      <h2>🌓 全局正逆位概率</h2>
+      <div class="slider-row">
+        <label>正位概率</label>
+        <input type="range" id="upright-rate" min="0" max="100" step="1" value="50">
+        <span class="value"><span id="upright-rate-val">50</span>%</span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 10px;">
+        0% 全部抽逆位，50% 正逆位均等，100% 全部抽正位
+      </p>
+    </section>
+    
+    <!-- 卡牌编辑器 -->
+    <section class="glass-card" style="overflow:hidden;">
+      <h2>🎴 78 张卡牌配置</h2>
+      
+      <div class="filter-row">
+        <input type="text" id="search" placeholder="🔍 搜索牌名（中文/英文）...">
+        <button class="btn-filter active" data-filter="all">全部</button>
+        <button class="btn-filter" data-filter="major">大阿卡那</button>
+        <button class="btn-filter" data-filter="wands">权杖</button>
+        <button class="btn-filter" data-filter="cups">圣杯</button>
+        <button class="btn-filter" data-filter="swords">宝剑</button>
+        <button class="btn-filter" data-filter="pents">钱币</button>
+        <div class="spacer" style="flex:1;"></div>
+        <span style="font-size:0.78rem;color:var(--text-muted);" id="card-count"></span>
+      </div>
+      
+      <div style="overflow-x:auto;">
+        <table class="card-editor-table" id="card-table">
+          <thead>
+            <tr>
+              <th>卡牌</th>
+              <th style="width:70px;">权重</th>
+              <th>正位解读</th>
+              <th>逆位解读</th>
+            </tr>
+          </thead>
+          <tbody id="card-tbody">
+            <!-- JS 动态填充 -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+    
+    <!-- 底部操作 -->
+    <div class="glass-card" style="text-align:center; padding: 24px;">
+      <div class="btn-group">
+        <button class="btn btn-primary" id="save-btn" style="padding: 16px 48px; font-size: 1.05rem;">
+          💾 保存到云端
+        </button>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 12px;">
+        保存后所有访客访问首页都会使用新配置
+      </p>
+    </div>
+    
+  </div>
+</div>
+
+<!-- Toast 提示 -->
+<div class="toast" id="toast"></div>
+
+<!-- 脚本：顺序很重要 -->
+<script src="js/tarot-data.js"></script>
+<script src="js/config-sync.js"></script>
+<script src="js/admin.js"></script>
+
+</body>
+</html>

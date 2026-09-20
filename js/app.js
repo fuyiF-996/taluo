@@ -71,12 +71,16 @@ const SPREAD_COUNTS = {
 
 /* ==================== 初始化 ==================== */
 
-document.addEventListener('DOMContentLoaded', () => {
-  init();
+document.addEventListener('DOMContentLoaded', async () => {
+  await init();
 });
 
-function init() {
+async function init() {
   bindEvents();
+  // 从云端拉配置（失败自动降级，不阻塞页面）
+  if (window.loadCloudConfig) {
+    await window.loadCloudConfig();
+  }
   console.log('[塔罗] 页面已初始化，牌组数量:', TAROT_DECK.length);
 }
 
@@ -148,9 +152,11 @@ async function startDivination() {
   // 隐藏牌堆，准备显示抽到的牌
   hideDeck();
   
-  // 抽牌
+  // 抽牌（优先使用云端配置加权抽牌，降级到原始随机）
   const count = SPREAD_COUNTS[AppState.currentSpread];
-  AppState.drawnCards = drawCards(count);
+  AppState.drawnCards = (typeof window.drawCardsByConfig === 'function')
+    ? window.drawCardsByConfig(count)
+    : drawCards(count);
   
   // 生成卡牌 DOM 元素（背面朝上）
   renderCardBacks(AppState.drawnCards);
