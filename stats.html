@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📊 我的塔罗 · cabbage</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* 简洁的统计看板样式，复用 liquid 主题变量 */
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:20px; }
+    .stat-card { padding:20px; text-align:center; }
+    .stat-card .num { font-size:1.8rem; font-weight:700; color:var(--gold); font-family:serif; }
+    .stat-card .label { font-size:0.8rem; color:var(--text-muted); margin-top:4px; }
+    .section-title { color:var(--purple-light); font-size:0.95rem; margin:20px 0 10px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.12); }
+    .bar-row { display:flex; align-items:center; gap:10px; margin:6px 0; font-size:0.82rem; }
+    .bar-row .bar-label { min-width:80px; color:var(--text-muted); }
+    .bar-row .bar-bg { flex:1; height:12px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; }
+    .bar-row .bar-fg { height:100%; border-radius:6px; background:linear-gradient(90deg, var(--gold), var(--purple-primary)); transition:width 0.5s ease; }
+    .bar-row .bar-val { min-width:40px; text-align:right; color:var(--gold); font-family:monospace; }
+    .top-card { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .top-card img { width:36px; height:56px; object-fit:cover; border-radius:3px; border:1px solid rgba(255,255,255,0.15); }
+    .top-card .info { flex:1; }
+    .top-card .name { font-size:0.85rem; color:var(--text-white); }
+    .top-card .count { color:var(--gold); font-family:monospace; font-size:0.85rem; }
+    .empty { text-align:center; padding:60px 20px; color:var(--text-muted); }
+    .empty .big { font-size:3rem; margin-bottom:16px; opacity:0.5; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 style="font-size:1.4rem;">📊 我的塔罗</h1>
+      <div class="divider"></div>
+    </header>
+
+    <!-- 概览卡片 -->
+    <div class="stats-grid">
+      <div class="glass-card stat-card"><div class="num" id="s-total">0</div><div class="label">总抽牌次数</div></div>
+      <div class="glass-card stat-card"><div class="num" id="s-cards">0</div><div class="label">不同卡牌</div></div>
+      <div class="glass-card stat-card"><div class="num" id="s-upright">0%</div><div class="label">正位占比</div></div>
+      <div class="glass-card stat-card"><div class="num" id="s-active">0</div><div class="label">活跃天数</div></div>
+    </div>
+
+    <!-- 牌阵分布 -->
+    <div class="glass-card">
+      <div class="section-title">🕯️ 牌阵使用分布</div>
+      <div id="s-spreads"></div>
+    </div>
+
+    <!-- 高频卡牌 Top 10 -->
+    <div class="glass-card">
+      <div class="section-title">🎴 高频卡牌 Top 10</div>
+      <div id="s-topcards"></div>
+    </div>
+
+    <!-- 每日活跃度 -->
+    <div class="glass-card">
+      <div class="section-title">📅 近 30 天活跃</div>
+      <div id="s-heatmap"></div>
+    </div>
+
+    <!-- 历史记录 -->
+    <div class="glass-card">
+      <div class="section-title">📜 最近抽牌</div>
+      <div id="s-history"></div>
+    </div>
+
+    <footer style="text-align:center;padding:20px 0;color:var(--text-muted);font-size:0.8rem;">
+      <a href="index.html" style="color:var(--gold);text-decoration:none;">← 返回占卜首页</a>
+    </footer>
+  </div>
+
+  <script src="js/tarot-data.js"></script>
+  <script src="js/config-sync.js"></script>
+  <script src="js/stats.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const TarotStats = window.TarotStats;
+      if (!TarotStats) return;
+
+      const s = TarotStats.refreshStats();
+
+      // 概览
+      document.getElementById("s-total").textContent = s.totalDraws;
+      const uniqueCards = Object.keys(s.cards).length;
+      document.getElementById("s-cards").textContent = uniqueCards;
+      const totalOri = s.orientations.upright + s.orientations.reversed;
+      const pct = totalOri ? Math.round(s.orientations.upright / totalOri * 100) : 50;
+      document.getElementById("s-upright").textContent = pct + "%";
+      document.getElementById("s-active").textContent = Object.keys(s.dates).length;
+
+      // 牌阵分布条
+      const spreadsEl = document.getElementById("s-spreads");
+      const spreads = Object.entries(s.spreads).sort((a,b) => b[1] - a[1]);
+      if (spreads.length === 0) spreadsEl.innerHTML = `<div class="empty"><div class="big">🔮</div>暂无数据，先去占卜吧</div>`;
+      else spreadsEl.innerHTML = spreads.map(([k, v]) => {
+        const p = Math.round(v / s.totalDraws * 100);
+        const labelMap = { single: "单牌日运", three: "三牌阵", yesno: "是/否", relationship: "关系", monthly: "月运", yearly: "年运" };
+        return `<div class="bar-row"><span class="bar-label">${labelMap[k] || k}</span><div class="bar-bg"><div class="bar-fg" style="width:${p}%"></div></div><span class="bar-val">${v}</span></div>`;
+      }).join("");
+
+      // 高频卡牌 Top 10
+      const tcEl = document.getElementById("s-topcards");
+      const topCards = Object.entries(s.cards).sort((a,b) => b[1] - a[1]).slice(0, 10);
+      if (topCards.length === 0) tcEl.innerHTML = `<div class="empty"><div class="big">🎴</div>暂无数据</div>`;
+      else tcEl.innerHTML = topCards.map(([id, cnt]) => {
+        const card = window.TAROT_DECK?.find(c => c.id === id);
+        const url = card?.imageUrl || `images/${id}.png`;
+        return `<a href="library.html?card=${id}" class="top-card" style="text-decoration:none;color:inherit;"><img src="${url}" loading="lazy"><div class="info"><div class="name">${card?.name || id}</div></div><span class="count">×${cnt}</span></a>`;
+      }).join("");
+
+      // 30 天活跃度（简易网格）
+      const hmEl = document.getElementById("s-heatmap");
+      const days = [];
+      const today = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(today); d.setDate(d.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        days.push({ key, count: s.dates[key] || 0, label: d.getDate() });
+      }
+      const maxCount = Math.max(...days.map(d => d.count), 1);
+      hmEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(10,1fr);gap:4px;">` +
+        days.map(d => {
+          const intensity = d.count ? Math.round(40 + (d.count / maxCount) * 60) : 8;
+          const bg = d.count ? `rgba(100,216,203,${intensity/100})` : `rgba(255,255,255,0.06)`;
+          const border = d.count ? `1px solid rgba(100,216,203,0.4)` : `1px solid rgba(255,255,255,0.1)`;
+          return `<div title="${d.key}: ${d.count} 次" style="aspect-ratio:1;border-radius:4px;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:var(--text-muted);">${d.label}</div>`;
+        }).join("") + `</div>`;
+
+      // 历史记录（最近 10 条）
+      const hEl = document.getElementById("s-history");
+      const history = TarotStats.getHistory().slice(-10).reverse();
+      if (history.length === 0) hEl.innerHTML = `<div class="empty"><div class="big">📖</div>暂无历史</div>`;
+      else hEl.innerHTML = history.map(h => {
+        const t = new Date(h.timestamp);
+        const labelMap = { single: "单牌", three: "三牌", yesno: "是/否", relationship: "关系", monthly: "月运", yearly: "年运" };
+        const cardNames = (h.cards || []).map(c => c.name).join(" / ");
+        return `<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.82rem;">
+          <span style="color:var(--gold);font-size:0.72rem;">${t.toLocaleString("zh-CN", {month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>
+          <span style="color:var(--text-muted);margin:0 8px;">·</span>
+          <span style="color:var(--purple-light);">${labelMap[h.spreadName || h.spread] || h.spread}</span>
+          <span style="color:var(--text-white);margin:0 6px;">${cardNames || "(无卡牌)"}</span>
+          ${h.question ? `<div style="color:var(--text-muted);font-size:0.75rem;margin-top:2px;">💭 ${h.question}</div>` : ""}
+        </div>`;
+      }).join("");
+    });
+  </script>
+</body>
+</html>

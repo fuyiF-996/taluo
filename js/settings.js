@@ -42,7 +42,6 @@
     if (_mouseRaf) return;
     _mouseRaf = requestAnimationFrame(() => {
       _mouseRaf = null;
-      // 事件委托：只更新当前 hover 的那一个元素（不遍历全部！）
       const el = e.target.closest(GLASS_SELECTORS);
       if (el) {
         const r = el.getBoundingClientRect();
@@ -50,8 +49,18 @@
         const py = ((e.clientY - r.top) / r.height) * 100;
         el.style.setProperty("--mx", Math.max(0, Math.min(100, px)) + "%");
         el.style.setProperty("--my", Math.max(0, Math.min(100, py)) + "%");
+
+        // ✨ C5: 3D 视差倾斜（液态玻璃专属）
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const tiltX = ((e.clientY - cy) / r.height) * -6;  // 最大 ±6°
+        const tiltY = ((e.clientX - cx) / r.width) * 6;
+        // 卡牌内部 .card-3d 不倾斜（保持翻牌功能），只有 glass-card / lib-card 等大容器
+        if (el.classList.contains("glass-card") || el.classList.contains("lib-card") || el.classList.contains("lib-modal-card")) {
+          el.style.setProperty("--tilt-x", tiltX.toFixed(2) + "deg");
+          el.style.setProperty("--tilt-y", tiltY.toFixed(2) + "deg");
+        }
       }
-      // body 级别坐标（给全局用）
       document.body.style.setProperty("--mouse-x", e.clientX + "px");
       document.body.style.setProperty("--mouse-y", e.clientY + "px");
     });

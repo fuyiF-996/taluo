@@ -806,85 +806,86 @@ body[data-theme="liquid"]::before {
   background-attachment: fixed;
 }
 
-/* ---------- 液态玻璃卡片 —— 核心实现 ---------- */
+/* ---------- 液态玻璃卡片 —— 核心实现 ----------
+ * 重要：backdrop-filter / isolation / filter 必须放在伪元素上，
+ * 不能在 .glass-card 本体上——这些属性会创建新的 stacking context，
+ * 强制把后代的 transform-style: preserve-3d 降级为 flat，
+ * 导致塔罗牌 3D 翻转失效（翻来翻去都是牌背）！
+ *
+ * 层级设计（z-index）：
+ *   ::before  z-index: 0  → 背景层（backdrop-filter 在这里对 body 取样）
+ *   内容元素  z-index: 1  → 卡面/文字（在背景上面，保持 preserve-3d）
+ *   ::after   z-index: 2  → 反射高光层（装饰性，pointer-events:none）
+ */
 body[data-theme="liquid"] .glass-card {
   position: relative;
-  isolation: isolate;
+  /* 不要在这里加 backdrop-filter / isolation / filter / transform */
 
-  /* ① 极轻底色 + 几乎不糊的 blur + 高饱和度 + 亮度提升 */
-  background: rgba(255, 255, 255, var(--glass-alpha));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
-  /* 注意：不在 .glass-card 本体加 url(#liquid-distort) —— 避免扭曲卡片内文字 */
-
-  /* ② 亮边框 = 玻璃边缘（高 alpha 让边缘有实体感） */
   border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha));
   border-radius: 22px;
 
-  /* ③ 菲涅尔边缘光 —— 多层 inset shadow 模拟玻璃各面的光线 */
   box-shadow:
-    /* 外部投影 —— 玻璃离背景的悬浮感 */
     0 8px 40px rgba(0, 0, 0, 0.55),
     0 2px 8px rgba(0, 0, 0, 0.35),
-    /* 顶部亮边 —— 玻璃上表面反射光 */
     inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    /* 左侧微亮边 —— 侧面入射光 */
     inset 1px 0 0 rgba(255, 255, 255, 0.12),
-    /* 右侧微暗边 —— 光线离开 */
     inset -1px 0 0 rgba(0, 0, 0, 0.12),
-    /* 底部暗边 —— 玻璃底部阴影 */
     inset 0 -1px 0 rgba(0, 0, 0, 0.15),
-    /* 整体内阴影增加厚度感 */
     inset 0 -30px 50px rgba(0, 0, 0, 0.12);
 
   overflow: hidden;
 
-  /* 默认鼠标坐标（JS 会覆盖） */
   --mx: 50%;
   --my: 50%;
 }
 
-/* ④ 伪元素 ::before —— 菲涅尔上沿高光 + 鼠标跟随的镜面反射 */
+/* 内容元素：显式浮在背景层之上（让 backdrop-filter 能正确对 body 取样） */
+body[data-theme="liquid"] .glass-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 伪元素 ::before —— 真正的液态玻璃背景层（z-index: 0） */
 body[data-theme="liquid"] .glass-card::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;  /* 在内容下面！这样 backdrop-filter 才能对 body 背景取样 */
 
-  background:
-    /* 鼠标跟随镜面反射 —— 像真实玻璃对着光源的反光 */
-    radial-gradient(
-      circle at var(--mx) var(--my),
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(255, 255, 255, 0.08) 12%,
-      transparent 28%
-    );
+  background-color: rgba(255, 255, 255, var(--glass-alpha));
+  background-image: radial-gradient(
+    circle at var(--mx) var(--my),
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.08) 12%,
+    transparent 28%
+  );
+  background-blend-mode: normal;
+
+  /* backdrop-filter 放这里——伪元素不影响真正子元素的 preserve-3d */
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
+  isolation: isolate;
 
   transition: background 0.12s ease-out;
 }
 
-/* ⑤ 伪元素 ::after —— 曲面反射光带 + conic 扫描光泽 */
+/* 伪元素 ::after —— 曲面反射光带 + conic 扫描光泽（z-index: 2，在内容上面） */
 body[data-theme="liquid"] .glass-card::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
 
-  /* inset 负偏移制造曲面反射 —— Apple 液态玻璃的签名 */
   box-shadow:
-    /* 顶部外侧高光（菲涅尔反射） */
     inset 0 2px 0 rgba(255, 255, 255, 0.35),
-    /* 底部内侧暗条（玻璃厚度） */
     inset 0 -2px 4px rgba(0, 0, 0, 0.15),
-    /* 左下斜向反射光带（曲面镜面） */
     inset -10px -8px 0 -11px rgba(255, 255, 255, 0.55),
     inset 0px -9px 0px -8px rgba(255, 255, 255, 0.35);
 
-  /* conic 扫描光泽 —— 22s 缓慢旋转 */
   background: conic-gradient(
     from 180deg at 50% 50%,
     transparent 0deg,
@@ -902,6 +903,61 @@ body[data-theme="liquid"] .glass-card::after {
 @keyframes liquidSheen {
   0%   { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* ✨ C5: 液态玻璃鼠标 3D 视差（hover 时 tilt，离开回弹） */
+body[data-theme="liquid"] .glass-card,
+body[data-theme="liquid"] .lib-card,
+body[data-theme="liquid"] .lib-modal-card {
+  transform: perspective(800px) rotateX(0deg) rotateY(0deg);
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+}
+body[data-theme="liquid"] .glass-card:hover,
+body[data-theme="liquid"] .lib-card:hover,
+body[data-theme="liquid"] .lib-modal-card:hover {
+  transform: perspective(800px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.08s ease-out;
+}
+body[data-theme="liquid"] .glass-card .card-3d,
+body[data-theme="liquid"] .glass-card .cards-display {
+  transform: none;
+}
+
+/* ✨ C1: 每日一张卡 Daily Card */
+.daily-card {
+  display: flex; align-items: center; gap: 18px; padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.dc-left {
+  position: relative; width: 80px; height: 120px; flex-shrink: 0;
+}
+.dc-left img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.dc-left .dc-orb {
+  position: absolute; inset: -6px; border-radius: 12px;
+  background: radial-gradient(circle, rgba(100,216,203,0.25), transparent 65%);
+  animation: pulse 3s ease-in-out infinite;
+  pointer-events: none;
+}
+.dc-right { flex: 1; min-width: 0; }
+.dc-date { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.05em; text-transform: uppercase; }
+.dc-label { font-size: 0.65rem; color: var(--purple-light); margin-top: 2px; letter-spacing: 0.1em; }
+.dc-name { font-size: 1.05rem; font-weight: 600; color: var(--gold); margin: 4px 0; }
+.dc-advice { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+
+/* liquid 主题下每日卡 */
+body[data-theme="liquid"] .daily-card {
+  background: linear-gradient(135deg, rgba(100,216,203,0.08), rgba(139,124,247,0.06));
+  border: 1px solid rgba(100,216,203,0.25);
+  box-shadow: 0 4px 24px rgba(100,216,203,0.1), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+@media (max-width: 600px) {
+  .daily-card { flex-direction: column; text-align: center; }
+  .dc-left { width: 70px; height: 105px; }
 }
 
 /* ---------- 液态玻璃按钮 —— 透明化 + 边缘光 ---------- */

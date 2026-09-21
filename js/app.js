@@ -1,21 +1,27 @@
-// cabbage塔罗 v2 —— 主应用逻辑
+// cabbage塔罗 v3 —— 主应用逻辑
 /**
  * ============================================================================
  * cabbage塔罗抽牌网页 —— 主应用逻辑
  * ============================================================================
  * 
- * 功能模块：
- * 1. 牌阵选择（单牌日运 / 三牌过去-现在-未来 / 是-否 / 关系六牌阵）
- * 2. 洗牌动画控制（洗牌音效 TarotFeedback.playShuffle）
- * 3. 随机抽牌（优先云端加权抽牌，降级到原始随机）
- * 4. 卡牌3D翻转动画（翻牌音效 TarotFeedback.playFlip）
- * 5. 结果解读渲染（含展开联想 / 分享图按钮 / yesno 顶部结论 / relationship 位置标签）
- * 6. 历史记录 localStorage（最多 20 条）
- * 7. 敏感词转译提示（用户确认后替换）
- * 8. 云端牌阵启用/禁用
- * 9. 重置/重新占卜
+ * v3 新增：
+ * ✨ C1 每日一张卡 Daily Card
+ * ✨ C3 月运 + 年运牌阵  
+ * ✨ C5 液态玻璃 3D 视差
+ * ✨ C9 翻牌光效升级版
+ * ✨ C10 关键词点击跳转百科
+ * ✨ 统计数据写入 localStorage（stats.html 消费）
+ * ✨ PWA Service Worker 注册
  * 
- * 所有随机逻辑在浏览器本地完成，不请求任何外部API
+ * 原有功能模块（v2）：
+ * 1. 牌阵选择（6 种：单牌 / 三牌 / 是-否 / 关系 / 月运 / 年运）
+ * 2. 洗牌/翻牌音效 + 振动反馈
+ * 3. 加权抽牌 + 云端正位概率
+ * 4. 卡牌 3D 翻转
+ * 5. 结果解读（展开联想 / 分享图 / yesno 结论 / relationship 标签）
+ * 6. 历史记录 localStorage
+ * 7. 敏感词转译提示
+ * 8. 云端牌阵开关 / AI 解读（可选）
  * ============================================================================
  */
 
@@ -65,6 +71,10 @@ const SPREAD_POSITIONS = {
   three: ['过去', '现在', '未来'],
   yesno: ['是/否'],
   relationship: ['我', 'TA', '我们', '过去', '现在', '未来'],
+  // ✨ C3: 月运 6 张
+  monthly: ['上月总结', '本月关键词', '事业', '感情', '财务', '月终建议'],
+  // ✨ C3: 年运 14 张（12 月 + 年首 + 年尾）
+  yearly: ['年度主题', '一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月', '年终总结'],
 };
 
 const SPREAD_COUNTS = {
@@ -72,6 +82,14 @@ const SPREAD_COUNTS = {
   three: 3,
   yesno: 1,
   relationship: 6,
+  monthly: 6,
+  yearly: 14,
+};
+
+// ✨ C3: 牌阵中文名映射（用于结果区域 + 历史记录）
+const spreadNameMap = {
+  single: '单牌日运', three: '三牌阵', yesno: '是/否',
+  relationship: '关系六牌阵', monthly: '月运六牌阵', yearly: '年运十四牌阵',
 };
 
 
@@ -89,6 +107,15 @@ async function init() {
   }
   // v2：根据云端 enabledSpreads 禁用/隐藏牌阵按钮
   applySpreadButtons();
+
+  // ✨ C1: 每日一张卡
+  renderDailyCard();
+
+  // ✨ C8: PWA Service Worker 注册
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
   console.log('[塔罗] 页面已初始化，牌组数量:', TAROT_DECK.length);
 }
 
@@ -150,8 +177,38 @@ function bindEvents() {
     }
   });
 
-  // 5. v2：敏感词转译提示（只提示，不改输入内容；用户确认后再替换）
+  // 5. v2：敏感词转译提示
   dom.questionInput.addEventListener('input', onQuestionInput);
+
+  // ✨ C1: 每日卡"用这张卡开始"按钮
+  const dcUse = document.getElementById('daily-use');
+  if (dcUse) dcUse.addEventListener('click', () => {
+    document.querySelector('.spread-btn[data-spread="single"]')?.click();
+    document.getElementById('question')?.focus();
+  });
+}
+
+/* ==================== ✨ C1: 每日一张卡 Daily Card ==================== */
+
+function renderDailyCard() {
+  const el = document.getElementById('daily-card');
+  if (!el || !window.TAROT_DECK) return;
+
+  // 日期哈希稳定映射：同一天 = 同一张卡
+  const today = new Date().toDateString();
+  const hash = [...today].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
+  const idx = Math.abs(hash) % TAROT_DECK.length;
+  const card = TAROT_DECK[idx];
+
+  document.getElementById('daily-date').textContent = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+  document.getElementById('daily-name').textContent = `${card.name} · ${card.nameEn}`;
+  document.getElementById('daily-advice').textContent = card.advice || card.upright?.slice(0, 40) + '...' || '静心冥想，让今日指引为你指明方向。';
+  const img = document.getElementById('daily-img');
+  if (img) {
+    img.src = card.imageUrl || `images/${card.id}.png`;
+    img.onerror = () => { img.src = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 120%22><rect width=%2280%22 height=%22120%22 fill=%22%232d1b4e%22 rx=%228%22/><text x=%2240%22 y=%2270%22 text-anchor=%22middle%22 font-size=%2240%22 fill=%22%2364d8cb%22>✦</text></svg>'; };
+  }
+  el.style.display = '';
 }
 
 
@@ -386,7 +443,6 @@ function getYesNoAnswer(card) {
 function renderReadingResult() {
   
   const positions = SPREAD_POSITIONS[AppState.currentSpread];
-  const spreadNameMap = { single: '单牌日运', three: '三牌阵', yesno: '是/否', relationship: '关系六牌阵' };
   const currentSpreadName = spreadNameMap[AppState.currentSpread] || '';
   
   // 构建 HTML
@@ -441,7 +497,7 @@ function renderReadingResult() {
       <div class="reading-card">
         <div class="position-label">${posLabel}</div>
         <div class="card-title">
-          ${card.name}
+          <a href="library.html?card=${card.id}" style="color:inherit;text-decoration:none;border-bottom:1px dashed var(--gold);" title="点击查看牌意百科">${card.name}</a>
           <span class="orientation-tag ${orientationClass}">${orientationLabel}</span>
         </div>
         <div class="meaning">${meaning}</div>
@@ -534,7 +590,6 @@ function onExpandToggle(e) {
 
 function saveToHistory() {
   try {
-    const spreadNameMap = { single: '单牌日运', three: '三牌阵', yesno: '是/否', relationship: '关系六牌阵' };
     const arr = JSON.parse(localStorage.getItem("tarot_history") || "[]");
     arr.unshift({
       timestamp: Date.now(),
@@ -545,7 +600,7 @@ function saveToHistory() {
         id: c.id, name: c.name, orientation: c.orientation,
       })),
     });
-    if (arr.length > 20) arr.length = 20;
+    if (arr.length > 50) arr.length = 50;  // v3: 扩容到 50 条（stats.html 需要更多数据）
     localStorage.setItem("tarot_history", JSON.stringify(arr));
   } catch {}
 }

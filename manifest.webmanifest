@@ -1,0 +1,21 @@
+{
+  "name": "cabbage塔罗 · 神秘抽牌",
+  "short_name": "塔罗",
+  "description": "纯静态前端塔罗抽牌 - 液态玻璃风格，支持 6 种牌阵 + 每日指引 + 牌意百科",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07060f",
+  "theme_color": "#64d8cb",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%2307060f'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='320'>🔮</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "lifestyle"]
+}

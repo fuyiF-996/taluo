@@ -179,6 +179,30 @@ function drawCardsByConfig(count) {
 }
 
 
+/* ==================== WebP 自动降级（性能优化） ==================== */
+/**
+ * 检测浏览器 WebP 支持 → 把 TAROT_DECK 的 imageUrl 从 .png 换成 .webp
+ * images-webp/ 目录已由 sharp 批量转换（78张 20.88MB → 4.03MB，省80%）
+ * 不支持 WebP 的浏览器（极旧版）保持 .png 不变
+ */
+(function enableWebPFallback() {
+  const webpSupport = document.createElement("canvas").toDataURL("image/webp").indexOf("data:image/webp") === 0;
+  if (!webpSupport) {
+    console.log("[塔罗] 浏览器不支持 WebP，使用 PNG 原图");
+    return;
+  }
+  let converted = 0;
+  TAROT_DECK.forEach(c => {
+    if (c.imageUrl && c.imageUrl.endsWith(".png")) {
+      // images/xxx.png → images-webp/xxx.webp
+      c.imageUrl = c.imageUrl.replace(/^images\//, "images-webp/").replace(/\.png$/, ".webp");
+      converted++;
+    }
+  });
+  if (converted) console.log(`[塔罗] WebP 优化已启用：${converted} 张图从 PNG 切换到 WebP`);
+})();
+
+
 /* ==================== 暴露到全局 ==================== */
 window.loadCloudConfig = loadCloudConfig;
 window.drawCardsByConfig = drawCardsByConfig;

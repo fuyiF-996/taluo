@@ -13,6 +13,10 @@
   
   <!-- Favicon（使用 emoji 替代，也可以换成自定义图标） -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
+
+  <!-- ✨ C8: PWA manifest -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#64d8cb">
 </head>
 
 <body>
@@ -30,8 +34,22 @@
         选择牌阵，输入你想探寻的问题，开启一次神秘之旅。
       </p>
     </header>
-    
-    
+
+    <!-- ✨ C1: 每日一张卡 Daily Card -->
+    <section class="glass-card daily-card" id="daily-card" style="display:none;">
+      <div class="dc-left">
+        <img id="daily-img" alt="今日卡">
+        <div class="dc-orb" aria-hidden="true"></div>
+      </div>
+      <div class="dc-right">
+        <div class="dc-date" id="daily-date">--</div>
+        <div class="dc-label">今日指引</div>
+        <div class="dc-name" id="daily-name">加载中...</div>
+        <div class="dc-advice" id="daily-advice">—</div>
+        <button class="btn btn-secondary" id="daily-use" style="margin-top:10px;padding:6px 14px;font-size:0.8rem;">🎴 用这张卡开始</button>
+      </div>
+    </section>
+
     <!-- ========== 2. 牌阵选择区 ========== -->
     <section class="glass-card" id="spread-section">
       <h2>🕯️ 选择牌阵</h2>
@@ -63,6 +81,20 @@
           <span class="icon">💑</span>
           <span class="label">关系</span>
           <span class="desc">我 · TA · 我们 · 时间线</span>
+        </button>
+
+        <!-- ✨ C3: 月运牌阵 -->
+        <button class="spread-btn" data-spread="monthly">
+          <span class="icon">🌙</span>
+          <span class="label">月运</span>
+          <span class="desc">6 张看本月全貌</span>
+        </button>
+
+        <!-- ✨ C3: 年运牌阵 -->
+        <button class="spread-btn" data-spread="yearly">
+          <span class="icon">✨</span>
+          <span class="label">年运</span>
+          <span class="desc">14 张看全年走向</span>
         </button>
       </div>
     </section>
@@ -131,6 +163,7 @@
       <div style="margin-top: 14px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
         <a href="library.html" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📚 牌意百科</a>
         <a href="capsule.html" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">🕰️ 时间胶囊</a>
+        <a href="stats.html" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📊 我的塔罗</a>
       </div>
       <!-- 后台入口：极不显眼，hover 才显现 -->
       <a href="admin.html" title="" aria-label="后台"
