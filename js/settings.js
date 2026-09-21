@@ -24,11 +24,46 @@
     return "dark";
   }
 
+  // ---------- 液态玻璃鼠标跟随高光（Apple 签名效果） ----------
+  let _mouseRaf = null;
+  let _liquidActive = false;
+  const GLASS_SELECTORS = ".glass-card, .lib-modal-card, .settings-panel, .history-drawer, .capsule-item, .lib-card";
+
+  function startLiquidMouseGlow() {
+    if (_liquidActive) return;
+    _liquidActive = true;
+    document.addEventListener("mousemove", _onMouse, { passive: true });
+  }
+  function stopLiquidMouseGlow() {
+    _liquidActive = false;
+    document.removeEventListener("mousemove", _onMouse);
+  }
+  function _onMouse(e) {
+    if (_mouseRaf) return;
+    _mouseRaf = requestAnimationFrame(() => {
+      _mouseRaf = null;
+      // 事件委托：只更新当前 hover 的那一个元素（不遍历全部！）
+      const el = e.target.closest(GLASS_SELECTORS);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const px = ((e.clientX - r.left) / r.width) * 100;
+        const py = ((e.clientY - r.top) / r.height) * 100;
+        el.style.setProperty("--mx", Math.max(0, Math.min(100, px)) + "%");
+        el.style.setProperty("--my", Math.max(0, Math.min(100, py)) + "%");
+      }
+      // body 级别坐标（给全局用）
+      document.body.style.setProperty("--mouse-x", e.clientX + "px");
+      document.body.style.setProperty("--mouse-y", e.clientY + "px");
+    });
+  }
+
   function applyTheme(theme) {
-    // dark 是默认，不设 data-theme；只有 liquid 需要设
     document.body.removeAttribute("data-theme");
     if (theme === "liquid") {
       document.body.setAttribute("data-theme", "liquid");
+      startLiquidMouseGlow();
+    } else {
+      stopLiquidMouseGlow();
     }
   }
 

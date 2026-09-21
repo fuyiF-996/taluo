@@ -149,6 +149,30 @@
   <script src="js/feedback.js"></script>
   <script src="js/share-image.js"></script>
   <script src="js/app.js"></script>
+
+  <!-- ★ 苹果液态玻璃 SVG 折射滤镜（Chrome 渐进增强）
+       feTurbulence 低 baseFrequency = 大尺度平滑扭曲
+       feDisplacementMap 模拟玻璃边缘的光线折射 -->
+  <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute">
+    <defs>
+      <filter id="liquid-distort" x="-5%" y="-5%" width="110%" height="110%">
+        <!-- 第一层：大尺度平滑噪声，模拟玻璃曲面的折射 -->
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.008 0.02"
+          numOctaves="2"
+          seed="7"
+          result="noise" />
+        <!-- 折射扭曲：用噪声图的 R/G 通道偏移背景像素 -->
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="noise"
+          scale="12"
+          xChannelSelector="R"
+          yChannelSelector="G" />
+      </filter>
+    </defs>
+  </svg>
   
 </body>
 </html>
