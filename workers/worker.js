@@ -1,10 +1,10 @@
-/**
+﻿/**
  * ============================================================================
- * Cloudflare Workers — 小应塔罗 API
+ * Cloudflare Workers — cabbage塔罗 API
  * ============================================================================
  * 
  * 部署方式：直接粘贴到 Cloudflare Workers 控制台（零依赖、单文件）
- * KV 绑定：把 KV 命名空间绑定到变量名 TAROT_KV
+ * KV 绑定：把 KV 命名空间绑定到变量名 TALUO_KV
  * 子域名：api.taluo996.top
  * 
  * 接口列表：
@@ -64,7 +64,7 @@ async function handleRequest(request, env, ctx) {
   if (method === "GET" && (pathname === "/" || pathname === "/config")) {
     let config = null;
     try {
-      const raw = await env.TAROT_KV.get("tarot_config");
+      const raw = await env.TALUO_KV.get("tarot_config");
       if (raw) {
         config = JSON.parse(raw);
       }
@@ -110,7 +110,7 @@ async function handleRequest(request, env, ctx) {
     
     // 写入 KV（TTL 0 = 永久）
     try {
-      await env.TAROT_KV.put("tarot_config", JSON.stringify(cfg));
+      await env.TALUO_KV.put("tarot_config", JSON.stringify(cfg));
     } catch (e) {
       console.error("写入 KV 失败:", e);
       return jsonResponse({ ok: false, error: "存储失败" }, corsHeaders, 500);
