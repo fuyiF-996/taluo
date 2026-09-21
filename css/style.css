@@ -819,7 +819,12 @@ body[data-theme="liquid"]::before {
  */
 body[data-theme="liquid"] .glass-card {
   position: relative;
-  /* 不要在这里加 backdrop-filter / isolation / filter / transform */
+  /* 必须显式覆盖基础 .glass-card 的 backdrop-filter 和 isolation！
+     不覆盖的话浏览器仍会降级 preserve-3d → flat，翻牌永远只显示牌背！
+     液态玻璃的 backdrop-filter 全部放在 ::before 伪元素上 */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: auto !important;  /* 不创建新 stacking context，让子元素 preserve-3d 正常 */
 
   border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha));
   border-radius: 22px;
@@ -1126,10 +1131,10 @@ body[data-theme="liquid"] .toast {
   border-radius: 16px;
 }
 
-/* ---------- 液态玻璃塔罗牌面 ---------- */
-body[data-theme="liquid"] .card-3d {
-  filter: drop-shadow(0 6px 18px rgba(100, 216, 203, 0.22));
-}
+/* ---------- 液态玻璃塔罗牌面 ----------
+ * 注意：filter 不能加在 .card-3d 本体上！filter 会强制降级子元素 preserve-3d → flat
+ * drop-shadow 效果改到牌背/牌面各自的 ::after 或 box-shadow 上
+ */
 body[data-theme="liquid"] .card-back {
   background:
     radial-gradient(circle at 30% 30%, rgba(100, 216, 203, 0.35), transparent 60%),
