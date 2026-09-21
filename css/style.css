@@ -905,23 +905,21 @@ body[data-theme="liquid"] .glass-card::after {
   100% { transform: rotate(360deg); }
 }
 
-/* ✨ C5: 液态玻璃鼠标 3D 视差（hover 时 tilt，离开回弹） */
-body[data-theme="liquid"] .glass-card,
+/* ✨ C5: 液态玻璃鼠标 3D 视差
+ * 关键 1：transform 只能在 :hover 时才加（perspective 会破坏子元素 preserve-3d）
+ * 关键 2：排除 .tarot-area / .cards-display —— 它们包含 3D 翻牌区！
+ */
+body[data-theme="liquid"] .glass-card:not(.tarot-area),
 body[data-theme="liquid"] .lib-card,
 body[data-theme="liquid"] .lib-modal-card {
-  transform: perspective(800px) rotateX(0deg) rotateY(0deg);
   transition: transform 0.15s ease-out;
   will-change: transform;
 }
-body[data-theme="liquid"] .glass-card:hover,
+body[data-theme="liquid"] .glass-card:not(.tarot-area):hover,
 body[data-theme="liquid"] .lib-card:hover,
 body[data-theme="liquid"] .lib-modal-card:hover {
   transform: perspective(800px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
   transition: transform 0.08s ease-out;
-}
-body[data-theme="liquid"] .glass-card .card-3d,
-body[data-theme="liquid"] .glass-card .cards-display {
-  transform: none;
 }
 
 /* ✨ C1: 每日一张卡 Daily Card */
