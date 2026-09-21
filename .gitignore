@@ -1,0 +1,25 @@
+# Git（Cloudflare Pages 不需要 .git 目录）
+.git/
+.gitattributes
+
+# 依赖
+node_modules/
+package.json
+package-lock.json
+
+# Wrangler（不要用 wrangler deploy 部署 Pages）
+wrangler.jsonc
+wrangler.toml
+.wrangler/
+
+# Trae / IDE
+.trae/
+.vscode/
+.idea/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 原始大图（只保留 WebP）
+images/

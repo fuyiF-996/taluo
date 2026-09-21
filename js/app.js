@@ -205,7 +205,7 @@ function renderDailyCard() {
   document.getElementById('daily-advice').textContent = card.advice || card.upright?.slice(0, 40) + '...' || '静心冥想，让今日指引为你指明方向。';
   const img = document.getElementById('daily-img');
   if (img) {
-    img.src = card.imageUrl || `images/${card.id}.png`;
+    img.src = card.imageUrl || `images-webp/${card.id}.webp`;
     img.onerror = () => { img.src = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 120%22><rect width=%2280%22 height=%22120%22 fill=%22%232d1b4e%22 rx=%228%22/><text x=%2240%22 y=%2270%22 text-anchor=%22middle%22 font-size=%2240%22 fill=%22%2364d8cb%22>✦</text></svg>'; };
   }
   el.style.display = '';

@@ -179,27 +179,22 @@ function drawCardsByConfig(count) {
 }
 
 
-/* ==================== WebP 自动降级（性能优化） ==================== */
+/* ==================== WebP 硬指向 ==================== */
 /**
- * 检测浏览器 WebP 支持 → 把 TAROT_DECK 的 imageUrl 从 .png 换成 .webp
- * images-webp/ 目录已由 sharp 批量转换（78张 20.88MB → 4.03MB，省80%）
- * 不支持 WebP 的浏览器（极旧版）保持 .png 不变
+ * 强制所有卡牌指向 images-webp/xxx.webp（images/ PNG 原图已删除，省 17MB）
+ * 2026 年所有现代浏览器都支持 WebP（Chrome 32+/Firefox 65+/Safari 14+）
  */
-(function enableWebPFallback() {
-  const webpSupport = document.createElement("canvas").toDataURL("image/webp").indexOf("data:image/webp") === 0;
-  if (!webpSupport) {
-    console.log("[塔罗] 浏览器不支持 WebP，使用 PNG 原图");
-    return;
-  }
+(function forceWebP() {
   let converted = 0;
   TAROT_DECK.forEach(c => {
-    if (c.imageUrl && c.imageUrl.endsWith(".png")) {
-      // images/xxx.png → images-webp/xxx.webp
-      c.imageUrl = c.imageUrl.replace(/^images\//, "images-webp/").replace(/\.png$/, ".webp");
+    // 任何不是 images-webp/xxx.webp 的路径，都改成 WebP
+    if (!c.imageUrl || !c.imageUrl.includes("images-webp/") || !c.imageUrl.endsWith(".webp")) {
+      // 从 id 推导：M00 → images-webp/M00.webp
+      c.imageUrl = "images-webp/" + c.id + ".webp";
       converted++;
     }
   });
-  if (converted) console.log(`[塔罗] WebP 优化已启用：${converted} 张图从 PNG 切换到 WebP`);
+  console.log(`[塔罗] WebP 已启用：${converted} 张图强制指向 images-webp/`);
 })();
 
 

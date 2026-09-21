@@ -105,7 +105,7 @@
       if (topCards.length === 0) tcEl.innerHTML = `<div class="empty"><div class="big">🎴</div>暂无数据</div>`;
       else tcEl.innerHTML = topCards.map(([id, cnt]) => {
         const card = window.TAROT_DECK?.find(c => c.id === id);
-        const url = card?.imageUrl || `images/${id}.png`;
+        const url = card?.imageUrl || `images-webp/${id}.webp`;
         return `<a href="library.html?card=${id}" class="top-card" style="text-decoration:none;color:inherit;"><img src="${url}" loading="lazy"><div class="info"><div class="name">${card?.name || id}</div></div><span class="count">×${cnt}</span></a>`;
       }).join("");
 

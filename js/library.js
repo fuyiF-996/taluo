@@ -108,7 +108,7 @@
         el.className = "lib-card card-card";
         el.dataset.id = id;
         // 用 data-src 做真正懒加载
-        const cardPath = c.imageUrl || `images/${c.id}.png`;
+        const cardPath = c.imageUrl || `images-webp/${c.id}.webp`;
         el.innerHTML = `
           <img data-src="${cardPath}" alt="${c.name}" loading="lazy">
           <div class="lib-name">${c.name}<small>${c.nameEn}</small></div>
@@ -144,7 +144,7 @@
   // ---------- 详情弹窗（点击时预加载）----------
   function showDetail(c) {
     const modal = $("#lib-modal");
-    const imgSrc = c.imageUrl || `images/${c.id}.png`;
+    const imgSrc = c.imageUrl || `images-webp/${c.id}.webp`;
 
     // 预加载：先创建 Image 对象，加载完再显示弹窗（体验更流畅）
     const preload = new Image();
