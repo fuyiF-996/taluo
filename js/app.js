@@ -1,15 +1,19 @@
-﻿/**
+// cabbage塔罗 v2 —— 主应用逻辑
+/**
  * ============================================================================
  * cabbage塔罗抽牌网页 —— 主应用逻辑
  * ============================================================================
  * 
  * 功能模块：
- * 1. 牌阵选择（单牌日运 / 三牌过去-现在-未来）
- * 2. 洗牌动画控制
- * 3. 随机抽牌（正/逆位自动决定）
- * 4. 卡牌3D翻转动画
- * 5. 结果解读渲染
- * 6. 重置/重新占卜
+ * 1. 牌阵选择（单牌日运 / 三牌过去-现在-未来 / 是-否 / 关系六牌阵）
+ * 2. 洗牌动画控制（洗牌音效 TarotFeedback.playShuffle）
+ * 3. 随机抽牌（优先云端加权抽牌，降级到原始随机）
+ * 4. 卡牌3D翻转动画（翻牌音效 TarotFeedback.playFlip）
+ * 5. 结果解读渲染（含展开联想 / 分享图按钮 / yesno 顶部结论 / relationship 位置标签）
+ * 6. 历史记录 localStorage（最多 20 条）
+ * 7. 敏感词转译提示（用户确认后替换）
+ * 8. 云端牌阵启用/禁用
+ * 9. 重置/重新占卜
  * 
  * 所有随机逻辑在浏览器本地完成，不请求任何外部API
  * ============================================================================
@@ -19,7 +23,7 @@
 /* ==================== 全局状态 ==================== */
 
 const AppState = {
-  currentSpread: 'single',      // 当前选中的牌阵：'single' | 'three'
+  currentSpread: 'single',      // 当前选中的牌阵：'single' | 'three' | 'yesno' | 'relationship'
   question: '',                 // 用户输入的问题
   drawnCards: [],               // 已抽取的牌数组
   phase: 'idle',                // 当前阶段：idle | shuffling | drawing | revealing | done
@@ -56,16 +60,18 @@ const dom = {
 
 /* ==================== 牌阵配置 ==================== */
 
-// 三牌阵的位置标签（会动态显示在结果解读中）
 const SPREAD_POSITIONS = {
   single: ['今日指引'],
-  three:  ['过去', '现在', '未来']
+  three: ['过去', '现在', '未来'],
+  yesno: ['是/否'],
+  relationship: ['我', 'TA', '我们', '过去', '现在', '未来'],
 };
 
-// 每种牌阵需要抽取的牌数
 const SPREAD_COUNTS = {
   single: 1,
-  three: 3
+  three: 3,
+  yesno: 1,
+  relationship: 6,
 };
 
 
@@ -81,7 +87,33 @@ async function init() {
   if (window.loadCloudConfig) {
     await window.loadCloudConfig();
   }
+  // v2：根据云端 enabledSpreads 禁用/隐藏牌阵按钮
+  applySpreadButtons();
   console.log('[塔罗] 页面已初始化，牌组数量:', TAROT_DECK.length);
+}
+
+
+/**
+ * v2：根据 CloudConfig.enabledSpreads 处理牌阵按钮
+ */
+function applySpreadButtons() {
+  if (!window.CloudConfig || !window.CloudConfig.enabledSpreads) return;
+  dom.spreadBtns.forEach(btn => {
+    const spread = btn.dataset.spread;
+    if (window.CloudConfig.enabledSpreads[spread] === false) {
+      btn.classList.add('disabled');
+      btn.title = '此牌阵已被管理员禁用';
+      btn.style.opacity = '0.4';
+      btn.style.pointerEvents = 'none';
+      // 如果当前选中的牌阵被禁用了，切回第一个可用的
+      if (AppState.currentSpread === spread) {
+        const first = [...dom.spreadBtns].find(b => !b.classList.contains('disabled'));
+        if (first) {
+          first.click();
+        }
+      }
+    }
+  });
 }
 
 
@@ -92,14 +124,15 @@ function bindEvents() {
   // 1. 牌阵选择
   dom.spreadBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+      if (btn.classList.contains('disabled')) return;
       if (AppState.phase !== 'idle' && AppState.phase !== 'done') return;
       
       dom.spreadBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       AppState.currentSpread = btn.dataset.spread;
       
-      // 三牌阵时给 cards-display 加个 class 方便样式调整
-      dom.cardsDisplay.classList.remove('single-spread', 'three-spread');
+      // 给 cards-display 加个 class 方便样式调整
+      dom.cardsDisplay.classList.remove('single-spread', 'three-spread', 'yesno-spread', 'relationship-spread');
       dom.cardsDisplay.classList.add(AppState.currentSpread + '-spread');
     });
   });
@@ -116,6 +149,80 @@ function bindEvents() {
       startDivination();
     }
   });
+
+  // 5. v2：敏感词转译提示（只提示，不改输入内容；用户确认后再替换）
+  dom.questionInput.addEventListener('input', onQuestionInput);
+}
+
+
+/* ==================== v2：敏感词转译 ==================== */
+
+function onQuestionInput() {
+  if (!window.TarotSettings) return;
+  const settings = window.TarotSettings.load();
+  if (!settings.keywordFilter) return;
+
+  const rules = (window.CloudConfig && window.CloudConfig.keywordRules) || [];
+  if (!rules.length) return;
+
+  const text = dom.questionInput.value;
+  if (!text.trim()) {
+    removeKeywordTip();
+    return;
+  }
+
+  // 找到第一条命中的规则（逐次检查）
+  let hit = null;
+  for (const rule of rules) {
+    if (rule.from && rule.to && text.includes(rule.from)) {
+      hit = rule;
+      break;
+    }
+  }
+
+  if (!hit) {
+    removeKeywordTip();
+    return;
+  }
+
+  // 显示提示条
+  let tip = document.getElementById('keyword-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'keyword-tip';
+    tip.style.cssText = 'font-size:0.8rem;margin-top:6px;padding:6px 10px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.4);border-radius:6px;color:#d4af37;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+    // 插入到 questionInput 后面（在它的下一个兄弟节点之前）
+    const hintP = dom.questionInput.nextElementSibling;
+    if (hintP && hintP.tagName === 'P') {
+      hintP.parentNode.insertBefore(tip, hintP);
+    } else {
+      dom.questionInput.parentNode.appendChild(tip);
+    }
+  }
+  tip.innerHTML = '';
+  const textNode = document.createElement('span');
+  textNode.textContent = `🛡️ 已自动转译：${hit.from} → ${hit.to}`;
+  tip.appendChild(textNode);
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.textContent = '确认替换';
+  confirmBtn.style.cssText = 'font-size:0.75rem;padding:2px 10px;background:#d4af37;color:#1a0d3d;border:none;border-radius:4px;cursor:pointer;';
+  confirmBtn.addEventListener('click', () => {
+    dom.questionInput.value = dom.questionInput.value.split(hit.from).join(hit.to);
+    removeKeywordTip();
+  });
+  tip.appendChild(confirmBtn);
+
+  const skipBtn = document.createElement('button');
+  skipBtn.textContent = '保持原样';
+  skipBtn.style.cssText = 'font-size:0.75rem;padding:2px 10px;background:transparent;color:#d4af37;border:1px solid #d4af37;border-radius:4px;cursor:pointer;';
+  skipBtn.addEventListener('click', () => removeKeywordTip());
+  tip.appendChild(skipBtn);
+}
+
+function removeKeywordTip() {
+  const tip = document.getElementById('keyword-tip');
+  if (tip) tip.remove();
 }
 
 
@@ -129,7 +236,6 @@ async function startDivination() {
   // 记录问题
   AppState.question = dom.questionInput.value.trim();
   if (!AppState.question) {
-    // 没输入问题也能继续，只是给个提示
     console.log('[塔罗] 用户未输入问题，使用通用占卜');
   }
   
@@ -141,6 +247,11 @@ async function startDivination() {
   showDeckForShuffling();
   dom.statusMessage.textContent = '✨ 正在洗牌，请静心冥想你的问题...';
   dom.startBtn.disabled = true;
+
+  // v2：洗牌音效
+  if (window.TarotFeedback && typeof window.TarotFeedback.playShuffle === 'function') {
+    window.TarotFeedback.playShuffle();
+  }
   
   // 洗牌动画持续 2.5 秒
   await sleep(2500);
@@ -172,6 +283,10 @@ async function startDivination() {
   for (let i = 0; i < cardElements.length; i++) {
     await sleep(600);
     cardElements[i].classList.add('flipped');
+    // v2：翻牌音效
+    if (window.TarotFeedback && typeof window.TarotFeedback.playFlip === 'function') {
+      window.TarotFeedback.playFlip();
+    }
   }
   
   // 等最后一张翻完，再渲染解读
@@ -183,6 +298,9 @@ async function startDivination() {
   dom.statusMessage.textContent = '🌟 占卜完成';
   dom.startBtn.disabled = false;
   dom.startBtn.textContent = '🔮 再次占卜';
+
+  // v2：保存到历史
+  saveToHistory();
 }
 
 
@@ -244,14 +362,44 @@ function renderCardBacks(cards) {
 }
 
 
+/* ==================== v2：yes/no 答案判定 ==================== */
+
+/**
+ * yesno 牌阵的规则：
+ *   - 抽到 大阿卡那 0(愚者) / 12(倒吊人) / 21(世界) → 答案待定
+ *   - 正位（除待定外）→ 是
+ *   - 逆位（除待定外）→ 否
+ */
+function getYesNoAnswer(card) {
+  const majorNum = card.id.startsWith('M') ? parseInt(card.id.slice(1), 10) : null;
+  if (majorNum !== null && (majorNum === 0 || majorNum === 12 || majorNum === 21)) {
+    return '🌟 答案：待定（中性大阿卡那：愚者/倒吊人/世界）';
+  }
+  return card.orientation
+    ? '🌟 答案：是（正位）'
+    : '🌟 答案：否（逆位）';
+}
+
+
 /* ==================== 渲染结果解读 ==================== */
 
 function renderReadingResult() {
   
   const positions = SPREAD_POSITIONS[AppState.currentSpread];
+  const spreadNameMap = { single: '单牌日运', three: '三牌阵', yesno: '是/否', relationship: '关系六牌阵' };
+  const currentSpreadName = spreadNameMap[AppState.currentSpread] || '';
   
   // 构建 HTML
   let html = '';
+
+  // v2：yesno 牌阵额外在顶部显示答案
+  if (AppState.currentSpread === 'yesno' && AppState.drawnCards.length > 0) {
+    html += `
+      <div id="yesno-answer" style="margin-bottom:18px;padding:14px 18px;background:linear-gradient(135deg,rgba(212,175,55,0.18),rgba(168,156,192,0.12));border:1px solid rgba(212,175,55,0.5);border-radius:10px;text-align:center;font-size:1.05rem;color:var(--gold);font-weight:bold;">
+        ${getYesNoAnswer(AppState.drawnCards[0])}
+      </div>
+    `;
+  }
   
   // 如果有问题，显示问题
   if (AppState.question) {
@@ -270,24 +418,144 @@ function renderReadingResult() {
     const meaning = orientation ? card.upright : card.reversed;
     const orientationClass = orientation ? 'orientation-upright' : 'orientation-reversed';
     const orientationLabel = orientation ? '正位' : '逆位';
+
+    // v2：relationship 牌阵在每张牌前显示对应位置标签（用不同的 emoji 区分）
+    let posLabel = position;
+    if (AppState.currentSpread === 'relationship') {
+      const emojiMap = { '我': '🪞', 'TA': '💗', '我们': '🕊️', '过去': '🕰️', '现在': '🌿', '未来': '🌅' };
+      posLabel = (emojiMap[position] || '📍') + ' ' + position;
+    } else {
+      posLabel = '📍 ' + position;
+    }
+
+    // v2：展开联想区（默认隐藏）
+    const extraBlocks = [];
+    if (card.keywords && card.keywords.trim()) extraBlocks.push(`<div class="联想-row"><span class="联想-label">关键词</span><span>${escapeHtml(card.keywords)}</span></div>`);
+    if (card.element && card.element.trim()) extraBlocks.push(`<div class="联想-row"><span class="联想-label">元素</span><span>${escapeHtml(card.element)}</span></div>`);
+    if (card.advice && card.advice.trim()) extraBlocks.push(`<div class="联想-row"><span class="联想-label">建议</span><span>${escapeHtml(card.advice)}</span></div>`);
+    if (card.warning && card.warning.trim()) extraBlocks.push(`<div class="联想-row"><span class="联想-label">警示</span><span>${escapeHtml(card.warning)}</span></div>`);
+
+    const uniqueId = 'expand-' + i;
     
     html += `
       <div class="reading-card">
-        <div class="position-label">📍 ${position}</div>
+        <div class="position-label">${posLabel}</div>
         <div class="card-title">
           ${card.name}
           <span class="orientation-tag ${orientationClass}">${orientationLabel}</span>
         </div>
         <div class="meaning">${meaning}</div>
+        ${extraBlocks.length > 0 ? `
+          <button class="联想-toggle" data-expand="${uniqueId}" style="margin-top:10px;font-size:0.8rem;padding:4px 12px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:4px;cursor:pointer;">展开联想 ▾</button>
+          <div id="${uniqueId}" class="联想-panel" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(168,156,192,0.08);border-left:2px solid var(--gold);border-radius:0 6px 6px 0;font-size:0.85rem;">
+            ${extraBlocks.join('')}
+          </div>
+        ` : ''}
       </div>
     `;
   });
+
+  // v2：底部分享按钮
+  html += `
+    <div id="share-area" style="margin-top:24px;text-align:center;">
+      <button id="generate-share-btn" style="font-size:0.95rem;padding:10px 28px;background:linear-gradient(135deg,#d4af37,#a89cc0);color:#1a0d3d;border:none;border-radius:20px;cursor:pointer;font-weight:bold;transition:transform .2s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
+        📸 生成分享图
+      </button>
+      <canvas id="share-canvas" style="display:none;"></canvas>
+    </div>
+  `;
   
   dom.resultContent.innerHTML = html;
   dom.resultSection.classList.remove('hidden');
+
+  // v2：绑定展开联想点击事件（事件委托）
+  dom.resultContent.addEventListener('click', onExpandToggle);
+
+  // v2：绑定分享图按钮
+  const shareBtn = document.getElementById('generate-share-btn');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      shareBtn.disabled = true;
+      shareBtn.textContent = '生成中...';
+      try {
+        if (window.TarotShare && typeof window.TarotShare.generate === 'function') {
+          const canvas = await window.TarotShare.generate({
+            question: AppState.question,
+            spreadName: currentSpreadName,
+            cards: AppState.drawnCards.map(c => ({
+              name: c.name,
+              nameEn: c.nameEn,
+              orientation: c.orientation,
+              imageUrl: c.imageUrl,
+              upright: c.upright,
+              reversed: c.reversed,
+            })),
+          });
+          if (typeof window.TarotShare.downloadCanvas === 'function') {
+            window.TarotShare.downloadCanvas(canvas, `tarot-${Date.now()}.png`);
+          }
+        } else {
+          alert('分享图模块未加载');
+        }
+      } catch (err) {
+        console.error('[塔罗] 分享图生成失败', err);
+        alert('生成失败，请稍后重试');
+      } finally {
+        shareBtn.disabled = false;
+        shareBtn.textContent = '📸 生成分享图';
+      }
+    });
+  }
   
   // 滚动到结果区
   dom.resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * v2：展开联想面板的事件处理器（事件委托，避免闭包）
+ */
+function onExpandToggle(e) {
+  const btn = e.target.closest('.联想-toggle');
+  if (!btn) return;
+  const id = btn.dataset.expand;
+  const panel = document.getElementById(id);
+  if (!panel) return;
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    btn.textContent = '收起联想 ▴';
+  } else {
+    panel.style.display = 'none';
+    btn.textContent = '展开联想 ▾';
+  }
+}
+
+
+/* ==================== v2：历史记录 ==================== */
+
+function saveToHistory() {
+  try {
+    const spreadNameMap = { single: '单牌日运', three: '三牌阵', yesno: '是/否', relationship: '关系六牌阵' };
+    const arr = JSON.parse(localStorage.getItem("tarot_history") || "[]");
+    arr.unshift({
+      timestamp: Date.now(),
+      question: AppState.question,
+      spread: AppState.currentSpread,
+      spreadName: spreadNameMap[AppState.currentSpread] || AppState.currentSpread,
+      cards: AppState.drawnCards.map(c => ({
+        id: c.id, name: c.name, orientation: c.orientation,
+      })),
+    });
+    if (arr.length > 20) arr.length = 20;
+    localStorage.setItem("tarot_history", JSON.stringify(arr));
+  } catch {}
+}
+
+function loadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem("tarot_history") || "[]");
+  } catch {
+    return [];
+  }
 }
 
 
@@ -317,6 +585,12 @@ function resetAll() {
   
   // 隐藏结果
   clearPreviousResult();
+
+  // 解绑展开联想事件（clean up）
+  dom.resultContent.removeEventListener('click', onExpandToggle);
+
+  // 清除可能残留的关键词提示
+  removeKeywordTip();
   
   // 重置按钮
   dom.startBtn.disabled = false;
@@ -328,7 +602,7 @@ function resetAll() {
 }
 
 
-/* ==================== 工具函数 ==================== */
+/* ==================== 工具函数（保持原有实现不动） ==================== */
 
 /**
  * 简易 sleep 函数（Promise 封装 setTimeout）
@@ -355,3 +629,5 @@ function escapeHtml(str) {
 
 // 在控制台暴露状态，方便调试
 window.__TAROT_APP__ = AppState;
+// v2：暴露历史读写接口
+window.TarotHistory = { save: saveToHistory, load: loadHistory };

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -255,7 +255,16 @@
     <div class="admin-toolbar glass-card" style="margin-bottom: 20px;">
       <span class="api-status" id="api-status">API: 检查中...</span>
       <div class="spacer"></div>
-      <button class="btn btn-secondary" id="load-btn">📥 从云端加载</button>
+      <select id="batch-ops" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);border-radius:6px;color:var(--text-white);padding:6px 10px;font-size:0.85rem;">
+        <option value="">⚡ 批量操作</option>
+        <option value="weight1">全部权重 = 1</option>
+        <option value="reset-text">恢复出厂文字</option>
+        <option value="upright100">全部正位概率 100%</option>
+        <option value="upright0">全部正位概率 0%</option>
+      </select>
+      <input type="file" id="import-file" accept=".json" style="display:none;">
+      <button class="btn btn-secondary" id="import-btn">📥 导入 JSON</button>
+      <button class="btn btn-secondary" id="load-btn">☁️ 从云端加载</button>
       <button class="btn btn-secondary" id="export-btn">💾 导出 JSON</button>
       <button class="btn btn-secondary" id="logout-btn">🚪 退出</button>
     </div>
@@ -293,10 +302,15 @@
         <table class="card-editor-table" id="card-table">
           <thead>
             <tr>
+              <th>预览</th>
               <th>卡牌</th>
               <th style="width:70px;">权重</th>
               <th>正位解读</th>
               <th>逆位解读</th>
+              <th>关键词</th>
+              <th>元素</th>
+              <th>建议</th>
+              <th>警示</th>
             </tr>
           </thead>
           <tbody id="card-tbody">
@@ -327,6 +341,7 @@
 <!-- 脚本：顺序很重要 -->
 <script src="js/tarot-data.js"></script>
 <script src="js/config-sync.js"></script>
+<script src="js/dev.js"></script>
 <script src="js/admin.js"></script>
 
 </body>

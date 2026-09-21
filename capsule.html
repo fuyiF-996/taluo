@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cabbage塔罗 · 时间胶囊</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
+  <style>
+    .capsule-create { max-width: 480px; margin: 20px auto; }
+    .capsule-create input, .capsule-create textarea {
+      width: 100%; padding: 10px 14px; margin: 6px 0 14px; box-sizing: border-box;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(212,175,55,0.25);
+      border-radius: 8px; color: var(--text-white); font-size: 0.9rem; outline: none;
+      font-family: inherit;
+    }
+    .capsule-create input:focus, .capsule-create textarea:focus { border-color: var(--gold); }
+    .capsule-list { display: grid; gap: 14px; }
+    .capsule-item {
+      padding: 16px; border-radius: 10px; border: 1px solid var(--glass-border);
+      background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur));
+    }
+    .capsule-item .c-header { display: flex; justify-content: space-between; align-items: center; }
+    .capsule-item .c-date { color: var(--gold); font-size: 0.8rem; }
+    .capsule-item .c-q { margin: 10px 0; color: var(--text-white); font-size: 0.95rem; }
+    .capsule-item .c-lock { text-align: center; padding: 20px; }
+    .capsule-item .c-countdown { font-size: 1.1rem; color: var(--gold); margin: 10px 0; font-family: var(--font-serif); }
+    .capsule-item .c-revealed .card-row {
+      display: flex; gap: 12px; align-items: flex-start; padding: 8px 0;
+      border-top: 1px dashed var(--glass-border);
+    }
+    .capsule-item .c-revealed .card-row img { width: 60px; height: 90px; object-fit: cover; border-radius: 6px; }
+    .capsule-item .c-revealed .card-info { flex: 1; }
+    .capsule-item .c-revealed .card-info .cn { color: var(--gold); font-weight: 600; }
+    .capsule-item .c-revealed .card-info .orig { font-size: 0.8rem; color: var(--text-muted); }
+    .capsule-item .c-revealed .card-info .meaning { font-size: 0.85rem; color: var(--text-white); margin-top: 4px; }
+    .capsule-empty { text-align: center; color: var(--text-muted); padding: 60px 20px; }
+    .capsule-delete {
+      font-size: 0.72rem; color: var(--text-muted); cursor: pointer;
+      background: none; border: 1px solid var(--glass-border); border-radius: 4px; padding: 2px 8px;
+    }
+    .capsule-delete:hover { color: #f87171; border-color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header" style="margin-bottom: 20px;">
+      <h1>🕰️ 时间胶囊</h1>
+      <div class="subtitle">封印一次占卜，未来某天解锁</div>
+      <div class="divider"></div>
+    </header>
+
+    <section class="glass-card capsule-create">
+      <h2 style="text-align:center; margin-bottom:10px;">🔒 封入胶囊</h2>
+      <label style="font-size:0.85rem;color:var(--text-muted);">📅 解锁日期</label>
+      <input type="date" id="cap-date">
+      <label style="font-size:0.85rem;color:var(--text-muted);">💭 你的问题</label>
+      <textarea id="cap-q" rows="3" placeholder="比如：这个目标在解锁日会怎样？"></textarea>
+      <div style="text-align:center;">
+        <button class="btn btn-primary" id="cap-lock-btn">🔮 抽一张封印</button>
+      </div>
+      <p style="text-align:center;color:var(--text-muted);font-size:0.75rem;margin-top:10px;">
+        到解锁日才能看到牌面，期间只能看到倒计时 ✨
+      </p>
+    </section>
+
+    <section class="glass-card" style="padding:16px 20px; margin-top:20px;">
+      <h2>📜 我的胶囊</h2>
+      <div id="cap-list" class="capsule-list" style="margin-top:10px;"></div>
+    </section>
+
+    <footer style="text-align:center;padding:30px 0;color:var(--text-muted);font-size:0.8rem;">
+      <a href="index.html" style="color:var(--gold);">← 返回占卜首页</a>
+    </footer>
+  </div>
+
+  <script src="js/tarot-data.js"></script>
+  <script src="js/config-sync.js"></script>
+  <script>
+  (function() {
+    const KEY = "tarot_capsules";
+    const $ = s => document.querySelector(s);
+
+    // 默认明天日期
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 30);
+    $("#cap-date").value = tomorrow.toISOString().slice(0, 10);
+    // 最小日期 = 今天
+    $("#cap-date").min = new Date().toISOString().slice(0, 10);
+
+    $("#cap-lock-btn").addEventListener("click", async () => {
+      const dateStr = $("#cap-date").value;
+      const q = $("#cap-q").value.trim();
+      if (!dateStr) { alert("请选一个解锁日期"); return; }
+      const unlockAt = new Date(dateStr + "T00:00:00").getTime();
+      if (unlockAt <= Date.now()) { alert("解锁日期必须是未来的"); return; }
+
+      if (window.loadCloudConfig) await window.loadCloudConfig();
+      const cards = window.drawCardsByConfig ? window.drawCardsByConfig(1) : [TAROT_DECK[Math.floor(Math.random()*TAROT_DECK.length)]];
+      // 补 orientation
+      cards.forEach(c => { if (typeof c.orientation !== "boolean") c.orientation = Math.random() < 0.5; });
+
+      const arr = JSON.parse(localStorage.getItem(KEY) || "[]");
+      arr.unshift({
+        id: Date.now(),
+        createdAt: Date.now(),
+        unlockAt,
+        question: q,
+        cards: cards.map(c => ({
+          id: c.id, name: c.name, nameEn: c.nameEn, imageUrl: c.imageUrl,
+          orientation: c.orientation, upright: c.upright, reversed: c.reversed,
+        })),
+      });
+      localStorage.setItem(KEY, JSON.stringify(arr));
+      $("#cap-q").value = "";
+      render();
+    });
+
+    function render() {
+      const list = $("#cap-list");
+      let arr = JSON.parse(localStorage.getItem(KEY) || "[]");
+      // 自动解锁到日期的
+      let changed = false;
+      arr.forEach(c => {
+        if (!c.unlocked && Date.now() >= c.unlockAt) { c.unlocked = true; changed = true; }
+      });
+      if (changed) localStorage.setItem(KEY, JSON.stringify(arr));
+
+      // 排序：未解锁的（按解锁时间升序）在前，已解锁的（按解锁时间倒序）在后
+      arr.sort((a, b) => {
+        if (a.unlocked !== b.unlocked) return a.unlocked ? 1 : -1;
+        return a.unlocked ? b.unlockAt - a.unlockAt : a.unlockAt - b.unlockAt;
+      });
+
+      if (!arr.length) {
+        list.innerHTML = `<div class="capsule-empty">还没有胶囊...<br>上面封一个试试 🔮</div>`;
+        return;
+      }
+
+      list.innerHTML = arr.map(c => {
+        const date = new Date(c.unlockAt);
+        const dateStr = date.toLocaleDateString();
+        const now = Date.now();
+        const diff = c.unlockAt - now;
+        let countdown = "";
+        if (!c.unlocked && diff > 0) {
+          const d = Math.floor(diff / 86400000);
+          const h = Math.floor((diff % 86400000) / 3600000);
+          const m = Math.floor((diff % 3600000) / 60000);
+          countdown = `还剩 ${d} 天 ${h} 小时 ${m} 分钟`;
+        }
+
+        if (c.unlocked) {
+          // 已解锁
+          const cardsHtml = c.cards.map(card => {
+            const orientText = card.orientation ? "正位" : "逆位";
+            const meaning = card.orientation ? card.upright : card.reversed;
+            return `<div class="card-row">
+              <img src="${card.imageUrl}" alt="${card.name}" onerror="this.style.background='var(--bg-mid)'">
+              <div class="card-info">
+                <div class="cn">${card.name} <span style="color:${card.orientation?'#4ade80':'#f87171'};font-size:0.78rem;">${orientText}</span></div>
+                <div class="orig">${card.nameEn}</div>
+                <div class="meaning">${meaning}</div>
+              </div>
+            </div>`;
+          }).join("");
+
+          return `<div class="capsule-item">
+            <div class="c-header"><span class="c-date">📅 解锁于 ${dateStr}</span></div>
+            <div class="c-q">"${c.question || '（未输入问题）'}"</div>
+            <div class="c-revealed">${cardsHtml}</div>
+            <div style="text-align:right;margin-top:8px;"><button class="capsule-delete" data-del="${c.id}">删除</button></div>
+          </div>`;
+        }
+
+        // 未解锁
+        return `<div class="capsule-item">
+          <div class="c-header"><span class="c-date">📅 ${dateStr} 解锁</span></div>
+          <div class="c-q">"${c.question || '（未输入问题）'}"</div>
+          <div class="c-lock">
+            <div style="font-size:2rem;">🔒</div>
+            <div class="c-countdown">${countdown}</div>
+            <div style="color:var(--text-muted);font-size:0.78rem;">牌面封印中，到期自动解锁</div>
+          </div>
+          <div style="text-align:right;margin-top:8px;"><button class="capsule-delete" data-del="${c.id}">删除</button></div>
+        </div>`;
+      }).join("");
+
+      list.querySelectorAll(".capsule-delete").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = Number(btn.dataset.del);
+          arr = arr.filter(c => c.id !== id);
+          localStorage.setItem(KEY, JSON.stringify(arr));
+          render();
+        });
+      });
+    }
+
+    render();
+    // 每分钟刷新倒计时
+    setInterval(render, 60000);
+  })();
+  </script>
+</body>
+</html>

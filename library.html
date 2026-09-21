@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cabbage塔罗 · 牌意百科</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
+  <style>
+    /* 顶部栏 */
+    .lib-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+    .lib-toolbar input[type="text"] {
+      flex: 1; min-width: 180px; padding: 10px 14px;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(212,175,55,0.25);
+      border-radius: 8px; color: var(--text-white); font-size: 0.9rem; outline: none;
+    }
+    .lib-toolbar input[type="text"]:focus { border-color: var(--gold); }
+    .lib-filter {
+      padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(157,78,221,0.3);
+      background: transparent; color: var(--purple-light); cursor: pointer; font-size: 0.8rem;
+    }
+    .lib-filter.active { background: rgba(157,78,221,0.25); border-color: var(--purple-light); color: var(--text-white); }
+    /* 网格 */
+    .lib-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 14px; padding: 10px 0;
+    }
+    .lib-card {
+      cursor: pointer; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--glass-border);
+      background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur));
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-align: center;
+    }
+    .lib-card:hover { transform: translateY(-4px); border-color: var(--gold); box-shadow: 0 0 14px rgba(212,175,55,0.2); }
+    .lib-card img { width: 100%; height: 180px; object-fit: cover; display: block; }
+    .lib-card .lib-name { padding: 8px 6px; font-size: 0.85rem; color: var(--gold); font-weight: 600; }
+    .lib-card .lib-name small { display: block; color: var(--text-muted); font-size: 0.7rem; font-weight: 400; }
+    /* 详情弹窗 */
+    .lib-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; z-index: 2000;
+      padding: 20px;
+    }
+    .lib-modal .lib-modal-card {
+      max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto;
+      border-radius: 12px; border: 1px solid var(--gold);
+      background: var(--bg-mid); padding: 24px;
+    }
+    .lib-modal img { max-width: 200px; border-radius: 8px; margin: 0 auto 16px; display: block; }
+    .lib-modal h2 { color: var(--gold); margin: 0 0 6px 0; }
+    .lib-modal .lib-close {
+      float: right; cursor: pointer; color: var(--text-muted); font-size: 1.4rem; line-height: 1;
+    }
+    .lib-modal .section { margin: 14px 0; }
+    .lib-modal .section h4 { color: var(--purple-light); margin: 0 0 6px 0; font-size: 0.85rem; }
+    .lib-modal .section p { margin: 0; color: var(--text-white); font-size: 0.9rem; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header" style="margin-bottom: 20px;">
+      <h1>📚 牌意百科</h1>
+      <div class="subtitle">78 张塔罗牌 · 正逆位全解读</div>
+      <div class="divider"></div>
+    </header>
+
+    <section class="glass-card" style="padding: 16px 20px;">
+      <div class="lib-toolbar">
+        <input type="text" id="lib-search" placeholder="🔍 搜索牌名（中文/英文）...">
+        <button class="lib-filter active" data-f="all">全部</button>
+        <button class="lib-filter" data-f="major">大阿卡那</button>
+        <button class="lib-filter" data-f="wands">权杖</button>
+        <button class="lib-filter" data-f="cups">圣杯</button>
+        <button class="lib-filter" data-f="swords">宝剑</button>
+        <button class="lib-filter" data-f="pents">钱币</button>
+      </div>
+
+      <div id="lib-grid" class="lib-grid"></div>
+    </section>
+
+    <footer style="text-align:center;padding:30px 0;color:var(--text-muted);font-size:0.8rem;">
+      <a href="index.html" style="color:var(--gold);">← 返回占卜首页</a>
+    </footer>
+  </div>
+
+  <!-- 详情弹窗（JS 动态填充） -->
+  <div id="lib-modal" class="lib-modal" style="display:none;"></div>
+
+  <!-- 脚本 -->
+  <script src="js/tarot-data.js"></script>
+  <script src="js/config-sync.js"></script>
+  <script src="js/library.js"></script>
+</body>
+</html>

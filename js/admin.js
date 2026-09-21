@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ============================================================================
  * cabbage塔罗 · 管理后台 主逻辑
  * ============================================================================
@@ -47,6 +47,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 退出按钮
   $("#logout-btn")?.addEventListener("click", () => {
     sessionStorage.removeItem("tarot_admin_logged");
+    sessionStorage.removeItem("tarot_admin_role");
     location.reload();
   });
 });
@@ -85,6 +86,7 @@ async function doLogin() {
     
     if (resp.ok && data.ok) {
       sessionStorage.setItem("tarot_admin_logged", "1");
+      if (data.role) sessionStorage.setItem("tarot_admin_role", data.role);
       state.loggedIn = true;
       showAdmin();
     } else {
@@ -103,15 +105,25 @@ async function doLogin() {
 async function showAdmin() {
   $("#login-page").style.display = "none";
   $("#admin-page").style.display = "block";
-  
+
+  // developer 登录后渲染开发者控制台
+  if (sessionStorage.getItem("tarot_admin_role") === "developer" && typeof window.TarotDev?.bindDev === "function") {
+    window.TarotDev.bindDev();
+  }
+
   // 初始化 state.cards 为当前 TAROT_DECK 的拷贝
   state.cards = TAROT_DECK.map(card => ({
     id: card.id,
     name: card.name,
     nameEn: card.nameEn,
+    imageUrl: card.imageUrl || "",
     weight: 1,           // 默认权重 1
     upright: card.upright,
     reversed: card.reversed,
+    keywords: card.keywords || "",
+    element: card.element || "",
+    advice: card.advice || "",
+    warning: card.warning || "",
   }));
   
   // 绑定筛选/搜索
@@ -140,6 +152,11 @@ async function showAdmin() {
   $("#load-btn").addEventListener("click", loadFromCloud);
   $("#save-btn").addEventListener("click", saveToCloud);
   $("#export-btn").addEventListener("click", exportJson);
+
+  // 批量操作 & 导入 JSON
+  $("#batch-ops").addEventListener("change", bindBatchOps);
+  $("#import-btn").addEventListener("click", () => $("#import-file").click());
+  $("#import-file").addEventListener("change", importJson);
   
   // 先渲染一次（用本地默认值）
   renderTable();
@@ -177,6 +194,10 @@ async function loadFromCloud(showToast = true) {
           if (typeof cloudCard.weight === "number") local.weight = cloudCard.weight;
           if (typeof cloudCard.upright === "string") local.upright = cloudCard.upright;
           if (typeof cloudCard.reversed === "string") local.reversed = cloudCard.reversed;
+          if (typeof cloudCard.keywords === "string") local.keywords = cloudCard.keywords;
+          if (typeof cloudCard.element === "string") local.element = cloudCard.element;
+          if (typeof cloudCard.advice === "string") local.advice = cloudCard.advice;
+          if (typeof cloudCard.warning === "string") local.warning = cloudCard.warning;
         });
       }
       
@@ -197,9 +218,11 @@ async function loadFromCloud(showToast = true) {
 
 /* ==================== 保存到云端 ==================== */
 async function saveToCloud() {
-  const pwd = prompt("请输入管理员密码以确认保存：");
+  const isDev = sessionStorage.getItem("tarot_admin_role") === "developer";
+  const savePath = isDev ? "/dev/save" : "/save";
+  const pwd = prompt(isDev ? "请输入开发者密码以确认保存：" : "请输入管理员密码以确认保存：");
   if (!pwd) return;
-  
+
   // 收集当前 state 为 config 格式
   const config = {
     globalUprightRate: state.uprightRate,
@@ -208,21 +231,25 @@ async function saveToCloud() {
       weight: Number(c.weight) || 1,
       upright: c.upright,
       reversed: c.reversed,
+      keywords: c.keywords || "",
+      element: c.element || "",
+      advice: c.advice || "",
+      warning: c.warning || "",
     })),
   };
-  
+
   const btn = $("#save-btn");
   btn.disabled = true;
   btn.textContent = "保存中...";
-  
+
   try {
-    const resp = await fetch(`${API_BASE}/save`, {
+    const resp = await fetch(`${API_BASE}${savePath}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: pwd, config }),
     });
     const data = await resp.json();
-    
+
     if (resp.ok && data.ok) {
       toast("✅ 保存成功！所有访客立刻生效");
       setApiStatus("ok", "已保存到云端");
@@ -249,6 +276,10 @@ function exportJson() {
       weight: Number(c.weight) || 1,
       upright: c.upright,
       reversed: c.reversed,
+      keywords: c.keywords || "",
+      element: c.element || "",
+      advice: c.advice || "",
+      warning: c.warning || "",
     })),
   };
   
@@ -292,6 +323,7 @@ function renderTable() {
   visibleCards.forEach(card => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td class="wtd"><img src="${card.imageUrl || ''}" style="width:50px;height:75px;object-fit:cover;border-radius:4px;border:1px solid rgba(212,175,55,0.25);" onerror="this.style.background='var(--bg-mid)'"></td>
       <td class="card-name">
         ${escapeHtml(card.name)}
         <small>${escapeHtml(card.nameEn)}</small>
@@ -305,6 +337,18 @@ function renderTable() {
       </td>
       <td>
         <textarea rows="2" data-id="${card.id}" data-field="reversed">${escapeHtml(card.reversed)}</textarea>
+      </td>
+      <td>
+        <textarea rows="2" data-id="${card.id}" data-field="keywords">${escapeHtml(card.keywords || '')}</textarea>
+      </td>
+      <td>
+        <textarea rows="2" data-id="${card.id}" data-field="element">${escapeHtml(card.element || '')}</textarea>
+      </td>
+      <td>
+        <textarea rows="2" data-id="${card.id}" data-field="advice">${escapeHtml(card.advice || '')}</textarea>
+      </td>
+      <td>
+        <textarea rows="2" data-id="${card.id}" data-field="warning">${escapeHtml(card.warning || '')}</textarea>
       </td>
     `;
     tbody.appendChild(tr);
@@ -348,6 +392,105 @@ function toast(msg, type = "") {
   toastTimer = setTimeout(() => {
     el.classList.remove("show");
   }, 2500);
+}
+
+
+/* ==================== 批量操作 ==================== */
+function bindBatchOps(e) {
+  const action = e.target.value;
+  if (!action) return;
+
+  const applyDefaults = () => {
+    // 从 TAROT_DECK 读取出厂文字
+    const deck = {};
+    TAROT_DECK.forEach(c => { deck[c.id] = c; });
+    return deck;
+  };
+
+  switch (action) {
+    case "weight1":
+      state.cards.forEach(c => c.weight = 1);
+      toast("✅ 全部权重已重置为 1");
+      break;
+    case "reset-text": {
+      const deck = applyDefaults();
+      let cnt = 0;
+      state.cards.forEach(c => {
+        const src = deck[c.id];
+        if (src) {
+          if (c.upright !== src.upright) { c.upright = src.upright; cnt++; }
+          if (c.reversed !== src.reversed) { c.reversed = src.reversed; cnt++; }
+        }
+      });
+      toast(`✅ 已恢复 ${cnt} 条出厂文字变更`);
+      break;
+    }
+    case "upright100":
+      state.uprightRate = 100;
+      $("#upright-rate").value = 100;
+      $("#upright-rate-val").textContent = 100;
+      toast("✅ 全局正位概率 → 100%");
+      break;
+    case "upright0":
+      state.uprightRate = 0;
+      $("#upright-rate").value = 0;
+      $("#upright-rate-val").textContent = 0;
+      toast("✅ 全局正位概率 → 0%");
+      break;
+  }
+
+  renderTable();
+  // 重置下拉
+  e.target.value = "";
+}
+
+
+/* ==================== 导入 JSON ==================== */
+function importJson(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+
+      // 识别两种格式：admin 导出 / 云端 config
+      const cards = Array.isArray(data.cards) ? data.cards : null;
+      if (!cards) { toast("❌ 无效 JSON：缺少 cards 数组", "error"); return; }
+
+      // 应用全局概率
+      if (typeof data.globalUprightRate === "number") {
+        state.uprightRate = data.globalUprightRate;
+        $("#upright-rate").value = state.uprightRate;
+        $("#upright-rate-val").textContent = state.uprightRate;
+      }
+
+      // 覆盖卡牌
+      let cnt = 0;
+      cards.forEach(src => {
+        const local = state.cards.find(c => c.id === src.id);
+        if (!local) return;
+        if (typeof src.weight === "number") local.weight = src.weight;
+        if (typeof src.upright === "string") local.upright = src.upright;
+        if (typeof src.reversed === "string") local.reversed = src.reversed;
+        if (typeof src.keywords === "string") local.keywords = src.keywords;
+        if (typeof src.element === "string") local.element = src.element;
+        if (typeof src.advice === "string") local.advice = src.advice;
+        if (typeof src.warning === "string") local.warning = src.warning;
+        cnt++;
+      });
+
+      renderTable();
+      toast(`✅ 已导入 ${cnt} 张卡牌配置（请记得保存到云端）`);
+    } catch (err) {
+      toast("❌ 解析失败：" + err.message, "error");
+    } finally {
+      // 重置 file input 以便再次选同一文件
+      e.target.value = "";
+    }
+  };
+  reader.readAsText(file);
 }
 
 
