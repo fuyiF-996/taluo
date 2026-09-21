@@ -18,22 +18,27 @@
     const existing = document.getElementById("dev-panel");
     if (existing) return;
 
+    // 清空占位符，挂到 Tab 4 的容器里
+    const slot = document.getElementById("dev-slot");
+    if (!slot) return;
+    slot.innerHTML = "";
+
     const panel = document.createElement("section");
     panel.className = "glass-card";
     panel.id = "dev-panel";
-    panel.style.marginTop = "20px";
+    panel.style.marginTop = "0";
     panel.innerHTML = `
-      <h2 style="color:var(--gold);">🛠️ 开发者控制台</h2>
-      <div style="margin-bottom:16px;font-size:0.8rem;color:var(--text-muted);">
-        只有开发者密码可访问。以下操作会立即对所有访客生效。
-      </div>
+      <h2 class="section-title"><span>🛠️</span>开发者控制台</h2>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:16px;">
+        仅开发者密码可访问，以下操作立刻对所有访客生效。
+      </p>
 
       <!-- 全站开关 -->
       <div class="dev-block">
-        <h3 style="color:var(--purple-light);font-size:0.9rem;margin:0 0 10px 0;">⚙️ 全站配置</h3>
+        <h3>⚙️ 全站配置</h3>
         <div class="dev-grid">
           <label>默认主题
-            <select id="d-theme" class="dev-select">
+            <select id="d-theme">
               <option value="dark">🌙 星空紫（默认）</option>
               <option value="liquid">💎 液态玻璃</option>
             </select>
@@ -50,42 +55,41 @@
 
       <!-- 敏感词库 -->
       <div class="dev-block" style="margin-top:20px;">
-        <h3 style="color:var(--purple-light);font-size:0.9rem;margin:0 0 10px 0;">🛡️ 敏感词转译</h3>
+        <h3>🛡️ 敏感词转译</h3>
         <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px;">每行一条，格式：原词→替换词</div>
-        <textarea id="d-kw" rows="6" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.3);border:1px solid rgba(157,78,221,0.25);border-radius:6px;color:var(--text-white);padding:8px;font-size:0.85rem;outline:none;resize:vertical;"></textarea>
+        <textarea id="d-kw" rows="6" placeholder="傻逼→笨蛋"></textarea>
       </div>
 
       <!-- 快照 -->
       <div class="dev-block" style="margin-top:20px;">
-        <h3 style="color:var(--purple-light);font-size:0.9rem;margin:0 0 10px 0;">📸 版本快照</h3>
+        <h3>📸 版本快照</h3>
         <button class="btn btn-primary" id="d-snapshot">📸 创建当前快照</button>
         <div id="d-snapshots" style="margin-top:12px;"></div>
       </div>
 
       <!-- 审计日志 -->
       <div class="dev-block" style="margin-top:20px;">
-        <h3 style="color:var(--purple-light);font-size:0.9rem;margin:0 0 10px 0;">📜 操作审计</h3>
+        <h3>📜 操作审计</h3>
         <button class="btn btn-secondary" id="d-refresh-audit">🔄 刷新</button>
         <div id="d-audit" style="margin-top:10px;max-height:300px;overflow-y:auto;"></div>
       </div>
 
       <!-- 密码热更新 -->
       <div class="dev-block" style="margin-top:20px;">
-        <h3 style="color:var(--purple-light);font-size:0.9rem;margin:0 0 10px 0;">🔐 密码热更新</h3>
-        <div style="display:flex;gap:8px;margin-bottom:6px;">
-          <select id="d-pwd-role" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);border-radius:6px;color:var(--text-white);padding:6px;">
+        <h3>🔐 密码热更新</h3>
+        <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+          <select id="d-pwd-role">
             <option value="admin">管理员密码</option>
             <option value="developer">开发者密码</option>
           </select>
-          <input type="password" id="d-pwd-current" placeholder="当前密码" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);border-radius:6px;color:var(--text-white);padding:6px;">
-          <input type="password" id="d-pwd-new" placeholder="新密码 (≥4位)" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);border-radius:6px;color:var(--text-white);padding:6px;">
+          <input type="password" id="d-pwd-current" placeholder="当前密码">
+          <input type="password" id="d-pwd-new" placeholder="新密码 (≥4位)">
         </div>
         <button class="btn btn-secondary" id="d-pwd-change">🔄 修改密码</button>
       </div>
     `;
 
-    // 插入到 .container 内、admin-page 里
-    document.querySelector("#admin-page .container").appendChild(panel);
+    slot.appendChild(panel);
 
     // 加载当前全局配置
     loadDevConfig();

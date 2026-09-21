@@ -1,55 +1,51 @@
 /**
- * ============================================================================
- * cabbage塔罗 · 管理后台 主逻辑
- * ============================================================================
- * 
- * 流程：
- * 1. 检查 sessionStorage 里是否已登录（localStorage 也会记一份密码摘要）
- * 2. 未登录 → 显示登录页 → POST /login → 成功后切换到后台
- * 3. 登录后拉云端现有配置（GET /），没有就用 TAROT_DECK 初始化
- * 4. 渲染 78 行编辑表格（权重 + 正/逆位文字）
- * 5. 保存时 POST /save（带密码）
- * 6. 导出 JSON 下载本地文件
- * ============================================================================
+ * cabbage塔罗 · 管理后台 v2
+ * 架构：Tab 分页 + Master-Detail 卡牌编辑 + 概览统计
+ * -------------------------------------------------------
+ * 4 个 Tab：📊 概览 / 🎴 卡牌编辑 / ⚙️ 全局设置 / 🛠️ 开发者
+ * 卡牌编辑器：左侧紧凑列表（缩略图+牌名+权重），右侧点选后完整表单
  */
 
-
-/* ==================== API 地址 ==================== */
-// 使用 config-sync.js 挂到 window 的值（如果 admin.html 也引入了 config-sync.js）
-// admin.html 里同时引入 config-sync.js 和 admin.js，API_BASE 已经在 config-sync.js 里声明过了
-
-
-/* ==================== 页面状态 ==================== */
+/* ==================== 状态 ==================== */
 let state = {
-  loggedIn: false,
-  cards: [],          // [{id, name, nameEn, weight, upright, reversed}]
+  cards: [],          // [{id, name, nameEn, weight, upright, reversed, keywords, element, advice, warning}]
   uprightRate: 50,
-  currentFilter: "all",
+  selectedId: null,
+  filterKey: "all",   // all / major / W / C / S / P
   searchKey: "",
 };
 
-
-/* ==================== DOM 快捷引用 ==================== */
-const $ = sel => document.querySelector(sel);
+const $ = s => document.querySelector(s);
 
 
 /* ==================== 启动 ==================== */
 document.addEventListener("DOMContentLoaded", async () => {
-  
-  // 检查 sessionStorage
-  if (sessionStorage.getItem("tarot_admin_logged") === "1") {
-    state.loggedIn = true;
-    showAdmin();
-  } else {
-    bindLogin();
-  }
-  
-  // 退出按钮
+
+  // 退出
   $("#logout-btn")?.addEventListener("click", () => {
     sessionStorage.removeItem("tarot_admin_logged");
     sessionStorage.removeItem("tarot_admin_role");
     location.reload();
   });
+
+  // Tab 切换
+  document.querySelectorAll(".admin-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".admin-tab").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const tab = btn.dataset.tab;
+      document.querySelectorAll(".admin-tab-content").forEach(el => {
+        el.style.display = el.dataset.tabContent === tab ? "" : "none";
+      });
+    });
+  });
+
+  // 登录检查
+  if (sessionStorage.getItem("tarot_admin_logged") === "1") {
+    showAdmin();
+  } else {
+    bindLogin();
+  }
 });
 
 
@@ -57,25 +53,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 function bindLogin() {
   const pwdInput = $("#login-password");
   const btn = $("#login-btn");
-  
-  // 回车登录
-  pwdInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") doLogin();
-  });
+  pwdInput.addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
   btn.addEventListener("click", doLogin);
 }
 
 async function doLogin() {
   const pwd = $("#login-password").value.trim();
-  if (!pwd) {
-    toast("请输入密码", "error");
-    return;
-  }
-  
+  if (!pwd) { toast("请输入密码", "error"); return; }
+
   const btn = $("#login-btn");
-  btn.disabled = true;
-  btn.textContent = "验证中...";
-  
+  btn.disabled = true; btn.textContent = "验证中...";
+
   try {
     const resp = await fetch(`${API_BASE}/login`, {
       method: "POST",
@@ -83,11 +71,9 @@ async function doLogin() {
       body: JSON.stringify({ password: pwd }),
     });
     const data = await resp.json();
-    
     if (resp.ok && data.ok) {
       sessionStorage.setItem("tarot_admin_logged", "1");
       if (data.role) sessionStorage.setItem("tarot_admin_role", data.role);
-      state.loggedIn = true;
       showAdmin();
     } else {
       toast(data.error || "密码错误", "error");
@@ -95,8 +81,7 @@ async function doLogin() {
   } catch (err) {
     toast("网络错误：" + err.message, "error");
   } finally {
-    btn.disabled = false;
-    btn.textContent = "登录";
+    btn.disabled = false; btn.textContent = "登录";
   }
 }
 
@@ -106,111 +91,308 @@ async function showAdmin() {
   $("#login-page").style.display = "none";
   $("#admin-page").style.display = "block";
 
-  // developer 登录后渲染开发者控制台
-  if (sessionStorage.getItem("tarot_admin_role") === "developer" && typeof window.TarotDev?.bindDev === "function") {
-    window.TarotDev.bindDev();
-  }
-
-  // 初始化 state.cards 为当前 TAROT_DECK 的拷贝
-  state.cards = TAROT_DECK.map(card => ({
-    id: card.id,
-    name: card.name,
-    nameEn: card.nameEn,
-    imageUrl: card.imageUrl || "",
-    weight: 1,           // 默认权重 1
-    upright: card.upright,
-    reversed: card.reversed,
-    keywords: card.keywords || "",
-    element: card.element || "",
-    advice: card.advice || "",
-    warning: card.warning || "",
+  // 初始化 state.cards（从 TAROT_DECK 克隆）
+  state.cards = TAROT_DECK.map(c => ({
+    id: c.id,
+    name: c.name,
+    nameEn: c.nameEn,
+    imageUrl: c.imageUrl || "",
+    weight: 1,
+    upright: c.upright,
+    reversed: c.reversed,
+    keywords: c.keywords || "",
+    element: c.element || "",
+    advice: c.advice || "",
+    warning: c.warning || "",
   }));
-  
-  // 绑定筛选/搜索
-  $("#search").addEventListener("input", (e) => {
-    state.searchKey = e.target.value.trim().toLowerCase();
-    renderTable();
-  });
-  document.querySelectorAll(".btn-filter").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      state.currentFilter = btn.dataset.filter;
-      renderTable();
-    });
-  });
-  
-  // 全局概率滑块
-  const slider = $("#upright-rate");
-  const valSpan = $("#upright-rate-val");
-  slider.addEventListener("input", () => {
-    state.uprightRate = parseInt(slider.value, 10);
-    valSpan.textContent = state.uprightRate;
-  });
-  
-  // 加载/保存/导出
-  $("#load-btn").addEventListener("click", loadFromCloud);
-  $("#save-btn").addEventListener("click", saveToCloud);
-  $("#export-btn").addEventListener("click", exportJson);
 
-  // 批量操作 & 导入 JSON
-  $("#batch-ops").addEventListener("change", bindBatchOps);
+  // 概览快捷按钮
+  $("#ov-save").addEventListener("click", saveToCloud);
+  $("#ov-redirect").addEventListener("click", () => {
+    document.querySelector('.admin-tab[data-tab="cards"]').click();
+  });
+
+  // 顶部工具栏
+  $("#load-btn").addEventListener("click", () => loadFromCloud(true));
+  $("#export-btn").addEventListener("click", exportJson);
   $("#import-btn").addEventListener("click", () => $("#import-file").click());
   $("#import-file").addEventListener("change", importJson);
-  
-  // 先渲染一次（用本地默认值）
-  renderTable();
-  
-  // 尝试从云端拉已有配置
-  await loadFromCloud(false); // false = 静默模式，失败不弹窗
+
+  // 全局设置 Tab
+  $("#save-btn").addEventListener("click", saveToCloud);
+  $("#settings-load").addEventListener("click", () => loadFromCloud(true));
+  $("#settings-export").addEventListener("click", exportJson);
+
+  // 正位概率滑块
+  const slider = $("#upright-rate");
+  slider.addEventListener("input", () => {
+    state.uprightRate = parseInt(slider.value, 10);
+    $("#upright-rate-val").textContent = state.uprightRate;
+  });
+
+  // 批量操作按钮（data-batch）
+  document.querySelectorAll("[data-batch]").forEach(btn => {
+    btn.addEventListener("click", () => applyBatch(btn.dataset.batch));
+  });
+
+  // 卡牌编辑 Tab —— 搜索 + 筛选
+  $("#card-search").addEventListener("input", e => {
+    state.searchKey = e.target.value.trim().toLowerCase();
+    renderCardList();
+  });
+  document.querySelectorAll(".chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      state.filterKey = chip.dataset.chip;
+      renderCardList();
+    });
+  });
+
+  // developer 登录后渲染 dev panel（新位置：#dev-slot）
+  if (sessionStorage.getItem("tarot_admin_role") === "developer") {
+    window.TarotDev?.bindDev();
+  } else {
+    // 非 developer 隐藏 dev Tab
+    const devTab = document.querySelector('.admin-tab[data-tab="dev"]');
+    if (devTab) devTab.style.display = "none";
+  }
+
+  // 先渲染本地默认 + 尝试拉云端
+  renderCardList();
+  refreshOverview();
+  await loadFromCloud(false);
 }
 
 
-/* ==================== 从云端加载已有配置 ==================== */
+/* ==================== Master-Detail: 左侧卡牌列表 ==================== */
+function renderCardList() {
+  const body = $("#card-list-body");
+  body.innerHTML = "";
+
+  const visible = state.cards.filter(c => {
+    if (state.searchKey) {
+      const h = (c.name + c.nameEn + c.id).toLowerCase();
+      if (!h.includes(state.searchKey)) return false;
+    }
+    if (state.filterKey === "all") return true;
+    if (state.filterKey === "major") return c.id.startsWith("M");
+    return c.id.startsWith(state.filterKey);
+  });
+
+  visible.forEach(card => {
+    const item = document.createElement("div");
+    item.className = "card-item" + (card.id === state.selectedId ? " active" : "");
+    item.innerHTML = `
+      <img src="${card.imageUrl || ''}" onerror="this.style.background='rgba(255,255,255,0.06)'">
+      <div class="info">
+        <div class="name">${escapeHtml(card.name)}</div>
+        <div class="en">${escapeHtml(card.nameEn)}</div>
+      </div>
+      <div class="wt">w${card.weight}</div>
+    `;
+    item.addEventListener("click", () => selectCard(card.id));
+    body.appendChild(item);
+  });
+
+  // 重渲染后恢复 active 状态
+  body.querySelectorAll(".card-item").forEach((el, i) => {
+    const c = visible[i];
+    if (c && c.id === state.selectedId) el.classList.add("active");
+  });
+}
+
+
+/* ==================== Master-Detail: 右侧详情编辑 ==================== */
+function selectCard(id) {
+  state.selectedId = id;
+  renderCardList();  // 更新列表 active 态
+
+  const card = state.cards.find(c => c.id === id);
+  if (!card) return;
+
+  const detail = $("#card-detail");
+  detail.innerHTML = `
+    <div class="detail-header">
+      <img src="${card.imageUrl || ''}" onerror="this.style.background='rgba(255,255,255,0.06)'">
+      <div class="titles">
+        <h2>${escapeHtml(card.name)}</h2>
+        <h3>${escapeHtml(card.nameEn)} · ${card.id}</h3>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-field half">
+        <label>权重 (w)</label>
+        <input type="number" min="0" max="999" step="0.1"
+               data-field="weight" value="${card.weight}">
+      </div>
+      <div class="detail-field half">
+        <label>元素</label>
+        <input type="text" data-field="element" value="${escapeHtml(card.element || '')}" placeholder="火/水/风/土/以太">
+      </div>
+
+      <div class="detail-field full">
+        <label>正位解读</label>
+        <textarea rows="3" data-field="upright">${escapeHtml(card.upright)}</textarea>
+      </div>
+      <div class="detail-field full">
+        <label>逆位解读</label>
+        <textarea rows="3" data-field="reversed">${escapeHtml(card.reversed)}</textarea>
+      </div>
+      <div class="detail-field half">
+        <label>关键词</label>
+        <textarea rows="3" data-field="keywords">${escapeHtml(card.keywords || '')}</textarea>
+      </div>
+      <div class="detail-field half">
+        <label>建议</label>
+        <textarea rows="3" data-field="advice">${escapeHtml(card.advice || '')}</textarea>
+      </div>
+      <div class="detail-field full">
+        <label>警示</label>
+        <textarea rows="2" data-field="warning">${escapeHtml(card.warning || '')}</textarea>
+      </div>
+    </div>
+  `;
+
+  // 绑定 input → 同步到 state
+  detail.querySelectorAll("input, textarea").forEach(el => {
+    el.addEventListener("input", () => {
+      const f = el.dataset.field;
+      if (f === "weight") {
+        card.weight = Number(el.value) || 1;
+        // 只更新当前列表项的 .wt，不重建整个列表！
+        const item = document.querySelector(`#card-list-body .card-item[data-id="${card.id}"] .wt`);
+        // 列表项没有 data-id，换个方式：遍历找 active 的那个
+        const activeItem = document.querySelector("#card-list-body .card-item.active .wt");
+        if (activeItem) activeItem.textContent = "w" + card.weight;
+      } else {
+        card[f] = el.value;
+      }
+      refreshOverview();
+    });
+  });
+}
+
+
+/* ==================== 概览统计 ==================== */
+function refreshOverview() {
+  const defaults = {};
+  TAROT_DECK.forEach(c => { defaults[c.id] = c; });
+
+  let modified = 0;
+  state.cards.forEach(c => {
+    const d = defaults[c.id];
+    if (!d) return;
+    if (c.weight !== 1) modified++;
+    if (c.upright !== d.upright) modified++;
+    if (c.reversed !== d.reversed) modified++;
+    if ((c.keywords || "") !== (d.keywords || "")) modified++;
+    if ((c.element || "") !== (d.element || "")) modified++;
+    if ((c.advice || "") !== (d.advice || "")) modified++;
+    if ((c.warning || "") !== (d.warning || "")) modified++;
+  });
+
+  $("#ov-total").textContent = state.cards.length;
+  $("#ov-modified").textContent = modified;
+  $("#ov-upright").textContent = state.uprightRate + "%";
+}
+
+
+/* ==================== 批量操作 ==================== */
+function applyBatch(action) {
+  const defaults = {};
+  TAROT_DECK.forEach(c => { defaults[c.id] = c; });
+
+  switch (action) {
+    case "weight1":
+      state.cards.forEach(c => c.weight = 1);
+      toast("✅ 全部权重 = 1");
+      break;
+    case "reset-text": {
+      let cnt = 0;
+      state.cards.forEach(c => {
+        const d = defaults[c.id];
+        if (d) {
+          if (c.upright !== d.upright) { c.upright = d.upright; cnt++; }
+          if (c.reversed !== d.reversed) { c.reversed = d.reversed; cnt++; }
+          if ((c.keywords || "") !== (d.keywords || "")) { c.keywords = d.keywords || ""; cnt++; }
+          if ((c.element || "") !== (d.element || "")) { c.element = d.element || ""; cnt++; }
+          if ((c.advice || "") !== (d.advice || "")) { c.advice = d.advice || ""; cnt++; }
+          if ((c.warning || "") !== (d.warning || "")) { c.warning = d.warning || ""; cnt++; }
+        }
+      });
+      toast(`✅ 已恢复 ${cnt} 条出厂变更`);
+      break;
+    }
+    case "upright100":
+      state.uprightRate = 100;
+      $("#upright-rate").value = 100; $("#upright-rate-val").textContent = 100;
+      toast("✅ 正位概率 → 100%");
+      break;
+    case "upright0":
+      state.uprightRate = 0;
+      $("#upright-rate").value = 0; $("#upright-rate-val").textContent = 0;
+      toast("✅ 正位概率 → 0%");
+      break;
+    case "half-major":
+      state.cards.forEach(c => { if (c.id.startsWith("M")) c.weight = (c.weight * 2) || 2; });
+      toast("✅ 大阿卡那权重 ×2");
+      break;
+    case "half-minor":
+      state.cards.forEach(c => { if (!c.id.startsWith("M")) c.weight = (c.weight * 2) || 2; });
+      toast("✅ 小阿卡那权重 ×2");
+      break;
+  }
+
+  if (state.selectedId) selectCard(state.selectedId);
+  else renderCardList();
+  refreshOverview();
+}
+
+
+/* ==================== 云端加载 ==================== */
 async function loadFromCloud(showToast = true) {
   setApiStatus("loading", "加载中...");
-  
+
   try {
-    const resp = await fetch(`${API_BASE}/`, {
-      headers: { "Accept": "application/json" },
-    });
+    const resp = await fetch(`${API_BASE}/`, { headers: { Accept: "application/json" } });
     const data = await resp.json();
-    
+
     if (resp.ok && data.ok && data.config) {
       const cfg = data.config;
-      
-      // 全局概率
       if (typeof cfg.globalUprightRate === "number") {
         state.uprightRate = cfg.globalUprightRate;
         $("#upright-rate").value = state.uprightRate;
         $("#upright-rate-val").textContent = state.uprightRate;
       }
-      
-      // 每张牌覆盖
+
       if (Array.isArray(cfg.cards)) {
-        cfg.cards.forEach(cloudCard => {
-          const local = state.cards.find(c => c.id === cloudCard.id);
+        cfg.cards.forEach(cc => {
+          const local = state.cards.find(c => c.id === cc.id);
           if (!local) return;
-          if (typeof cloudCard.weight === "number") local.weight = cloudCard.weight;
-          if (typeof cloudCard.upright === "string") local.upright = cloudCard.upright;
-          if (typeof cloudCard.reversed === "string") local.reversed = cloudCard.reversed;
-          if (typeof cloudCard.keywords === "string") local.keywords = cloudCard.keywords;
-          if (typeof cloudCard.element === "string") local.element = cloudCard.element;
-          if (typeof cloudCard.advice === "string") local.advice = cloudCard.advice;
-          if (typeof cloudCard.warning === "string") local.warning = cloudCard.warning;
+          if (typeof cc.weight === "number") local.weight = cc.weight;
+          if (typeof cc.upright === "string") local.upright = cc.upright;
+          if (typeof cc.reversed === "string") local.reversed = cc.reversed;
+          if (typeof cc.keywords === "string") local.keywords = cc.keywords;
+          if (typeof cc.element === "string") local.element = cc.element;
+          if (typeof cc.advice === "string") local.advice = cc.advice;
+          if (typeof cc.warning === "string") local.warning = cc.warning;
         });
       }
-      
-      renderTable();
-      setApiStatus("ok", "云端配置已同步");
-      if (showToast) toast("已从云端加载配置 ✓");
+
+      renderCardList();
+      refreshOverview();
+      setApiStatus("ok", "云端已同步");
+      if (showToast) toast("✅ 已从云端加载");
     } else {
-      // 没有配置或 KV 为空
-      setApiStatus("ok", "云端暂无配置（使用默认值）");
-      if (showToast) toast("云端暂无配置，已用默认值填充");
+      setApiStatus("ok", "云端暂无配置");
+      if (showToast) toast("云端暂无配置，使用默认值");
     }
+    $("#ov-api").textContent = "在线";
   } catch (err) {
     setApiStatus("err", "API 不可达");
+    $("#ov-api").textContent = "离线";
     if (showToast) toast("加载失败：" + err.message, "error");
   }
 }
@@ -220,10 +402,9 @@ async function loadFromCloud(showToast = true) {
 async function saveToCloud() {
   const isDev = sessionStorage.getItem("tarot_admin_role") === "developer";
   const savePath = isDev ? "/dev/save" : "/save";
-  const pwd = prompt(isDev ? "请输入开发者密码以确认保存：" : "请输入管理员密码以确认保存：");
+  const pwd = prompt(isDev ? "请输入开发者密码确认保存：" : "请输入管理员密码确认保存：");
   if (!pwd) return;
 
-  // 收集当前 state 为 config 格式
   const config = {
     globalUprightRate: state.uprightRate,
     cards: state.cards.map(c => ({
@@ -237,10 +418,6 @@ async function saveToCloud() {
       warning: c.warning || "",
     })),
   };
-
-  const btn = $("#save-btn");
-  btn.disabled = true;
-  btn.textContent = "保存中...";
 
   try {
     const resp = await fetch(`${API_BASE}${savePath}`, {
@@ -258,190 +435,30 @@ async function saveToCloud() {
     }
   } catch (err) {
     toast("网络错误：" + err.message, "error");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "💾 保存到云端";
   }
 }
 
 
-/* ==================== 导出 JSON 本地备份 ==================== */
+/* ==================== 导出 JSON ==================== */
 function exportJson() {
   const config = {
     exportedAt: new Date().toISOString(),
     globalUprightRate: state.uprightRate,
     cards: state.cards.map(c => ({
-      id: c.id,
-      name: c.name,
-      weight: Number(c.weight) || 1,
-      upright: c.upright,
-      reversed: c.reversed,
-      keywords: c.keywords || "",
-      element: c.element || "",
-      advice: c.advice || "",
-      warning: c.warning || "",
+      id: c.id, name: c.name, weight: Number(c.weight) || 1,
+      upright: c.upright, reversed: c.reversed,
+      keywords: c.keywords || "", element: c.element || "",
+      advice: c.advice || "", warning: c.warning || "",
     })),
   };
-  
   const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   a.href = url;
-  a.download = `tarot-config-${ts}.json`;
+  a.download = `tarot-config-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  
-  toast("💾 已导出备份 JSON");
-}
-
-
-/* ==================== 渲染卡牌表格 ==================== */
-function renderTable() {
-  const tbody = $("#card-tbody");
-  tbody.innerHTML = "";
-  
-  // 筛选 + 搜索
-  const visibleCards = state.cards.filter(c => {
-    // 搜索
-    if (state.searchKey) {
-      const haystack = (c.name + c.nameEn + c.id).toLowerCase();
-      if (!haystack.includes(state.searchKey)) return false;
-    }
-    // 分类筛选
-    if (state.currentFilter === "all") return true;
-    if (state.currentFilter === "major") return c.id.startsWith("M");
-    if (state.currentFilter === "wands") return c.id.startsWith("W");
-    if (state.currentFilter === "cups") return c.id.startsWith("C");
-    if (state.currentFilter === "swords") return c.id.startsWith("S");
-    if (state.currentFilter === "pents") return c.id.startsWith("P");
-    return true;
-  });
-  
-  $("#card-count").textContent = `显示 ${visibleCards.length} / ${state.cards.length}`;
-  
-  visibleCards.forEach(card => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="wtd"><img src="${card.imageUrl || ''}" style="width:50px;height:75px;object-fit:cover;border-radius:4px;border:1px solid rgba(212,175,55,0.25);" onerror="this.style.background='var(--bg-mid)'"></td>
-      <td class="card-name">
-        ${escapeHtml(card.name)}
-        <small>${escapeHtml(card.nameEn)}</small>
-      </td>
-      <td class="wtd">
-        <input type="number" min="0" max="999" step="0.1" value="${card.weight}"
-               data-id="${card.id}" data-field="weight">
-      </td>
-      <td>
-        <textarea rows="2" data-id="${card.id}" data-field="upright">${escapeHtml(card.upright)}</textarea>
-      </td>
-      <td>
-        <textarea rows="2" data-id="${card.id}" data-field="reversed">${escapeHtml(card.reversed)}</textarea>
-      </td>
-      <td>
-        <textarea rows="2" data-id="${card.id}" data-field="keywords">${escapeHtml(card.keywords || '')}</textarea>
-      </td>
-      <td>
-        <textarea rows="2" data-id="${card.id}" data-field="element">${escapeHtml(card.element || '')}</textarea>
-      </td>
-      <td>
-        <textarea rows="2" data-id="${card.id}" data-field="advice">${escapeHtml(card.advice || '')}</textarea>
-      </td>
-      <td>
-        <textarea rows="2" data-id="${card.id}" data-field="warning">${escapeHtml(card.warning || '')}</textarea>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-  
-  // 绑定所有 input / textarea 的修改 → 直接同步到 state
-  tbody.querySelectorAll("input, textarea").forEach(el => {
-    el.addEventListener("input", () => {
-      const id = el.dataset.id;
-      const field = el.dataset.field;
-      const target = state.cards.find(c => c.id === id);
-      if (target) {
-        if (field === "weight") {
-          target.weight = Number(el.value) || 1;
-        } else {
-          target[field] = el.value;
-        }
-      }
-    });
-  });
-}
-
-
-/* ==================== API 状态指示 ==================== */
-function setApiStatus(type, text) {
-  const el = $("#api-status");
-  el.className = "api-status " + type;
-  el.textContent = "API: " + text;
-}
-
-
-/* ==================== Toast 通知 ==================== */
-let toastTimer = null;
-function toast(msg, type = "") {
-  const el = $("#toast");
-  el.textContent = msg;
-  el.className = "toast " + type;
-  requestAnimationFrame(() => el.classList.add("show"));
-  
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    el.classList.remove("show");
-  }, 2500);
-}
-
-
-/* ==================== 批量操作 ==================== */
-function bindBatchOps(e) {
-  const action = e.target.value;
-  if (!action) return;
-
-  const applyDefaults = () => {
-    // 从 TAROT_DECK 读取出厂文字
-    const deck = {};
-    TAROT_DECK.forEach(c => { deck[c.id] = c; });
-    return deck;
-  };
-
-  switch (action) {
-    case "weight1":
-      state.cards.forEach(c => c.weight = 1);
-      toast("✅ 全部权重已重置为 1");
-      break;
-    case "reset-text": {
-      const deck = applyDefaults();
-      let cnt = 0;
-      state.cards.forEach(c => {
-        const src = deck[c.id];
-        if (src) {
-          if (c.upright !== src.upright) { c.upright = src.upright; cnt++; }
-          if (c.reversed !== src.reversed) { c.reversed = src.reversed; cnt++; }
-        }
-      });
-      toast(`✅ 已恢复 ${cnt} 条出厂文字变更`);
-      break;
-    }
-    case "upright100":
-      state.uprightRate = 100;
-      $("#upright-rate").value = 100;
-      $("#upright-rate-val").textContent = 100;
-      toast("✅ 全局正位概率 → 100%");
-      break;
-    case "upright0":
-      state.uprightRate = 0;
-      $("#upright-rate").value = 0;
-      $("#upright-rate-val").textContent = 0;
-      toast("✅ 全局正位概率 → 0%");
-      break;
-  }
-
-  renderTable();
-  // 重置下拉
-  e.target.value = "";
+  toast("💾 已导出 JSON 备份");
 }
 
 
@@ -451,22 +468,18 @@ function importJson(e) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (ev) => {
+  reader.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
-
-      // 识别两种格式：admin 导出 / 云端 config
       const cards = Array.isArray(data.cards) ? data.cards : null;
       if (!cards) { toast("❌ 无效 JSON：缺少 cards 数组", "error"); return; }
 
-      // 应用全局概率
       if (typeof data.globalUprightRate === "number") {
         state.uprightRate = data.globalUprightRate;
         $("#upright-rate").value = state.uprightRate;
         $("#upright-rate-val").textContent = state.uprightRate;
       }
 
-      // 覆盖卡牌
       let cnt = 0;
       cards.forEach(src => {
         const local = state.cards.find(c => c.id === src.id);
@@ -481,12 +494,12 @@ function importJson(e) {
         cnt++;
       });
 
-      renderTable();
-      toast(`✅ 已导入 ${cnt} 张卡牌配置（请记得保存到云端）`);
+      renderCardList();
+      refreshOverview();
+      toast(`✅ 已导入 ${cnt} 张卡牌（请保存到云端）`);
     } catch (err) {
       toast("❌ 解析失败：" + err.message, "error");
     } finally {
-      // 重置 file input 以便再次选同一文件
       e.target.value = "";
     }
   };
@@ -495,9 +508,25 @@ function importJson(e) {
 
 
 /* ==================== 工具 ==================== */
+function setApiStatus(type, text) {
+  const el = $("#api-status");
+  el.className = "api-status " + type;
+  el.textContent = (type === "loading" ? "⏳ " : "") + text;
+}
+
+let toastTimer = null;
+function toast(msg, type = "") {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.className = "toast " + type;
+  requestAnimationFrame(() => el.classList.add("show"));
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2500);
+}
+
 function escapeHtml(str) {
   if (!str) return "";
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
 }

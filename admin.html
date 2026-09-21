@@ -4,221 +4,222 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#1a0d3d">
-  
   <title>cabbage塔罗 · 管理后台</title>
-  
-  <!-- 复用主站样式，后台页面有一点额外样式在底部 -->
+
   <link rel="stylesheet" href="css/style.css">
   <style>
-    /* 登录页居中 */
-    .login-wrap {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .login-card {
-      width: 100%;
-      max-width: 380px;
-      text-align: center;
-    }
+    /* ============ 登录 ============ */
+    .login-wrap { min-height: 100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .login-card { width:100%; max-width:380px; text-align:center; }
     .login-card input[type="password"] {
-      width: 100%;
-      padding: 14px 16px;
-      margin-top: 12px;
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(212,175,55,0.25);
-      border-radius: 10px;
-      color: var(--text-white);
-      font-size: 1rem;
-      outline: none;
+      width:100%; padding:14px 16px; margin-top:12px;
+      background:rgba(255,255,255,0.10); border:1px solid rgba(255,255,255,0.28);
+      border-radius:10px; color:var(--text-white); font-size:1rem; outline:none;
+      backdrop-filter: blur(2px) saturate(180%) brightness(1.08);
     }
     .login-card input[type="password"]:focus {
       border-color: var(--gold);
-      box-shadow: 0 0 10px rgba(212,175,55,0.2);
+      box-shadow: 0 0 10px rgba(100,216,203,0.25);
     }
-    
-    /* 后台顶部工具栏 */
-    .admin-toolbar {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
+
+    /* ============ 顶部栏 ============ */
+    .admin-topbar {
+      display:flex; align-items:center; gap:14px; margin-bottom:16px; flex-wrap:wrap;
     }
-    .admin-toolbar .spacer { flex: 1; }
-    .admin-toolbar .api-status {
-      font-size: 0.8rem;
-      padding: 4px 10px;
-      border-radius: 20px;
-      background: rgba(0,0,0,0.3);
-      color: var(--text-muted);
+    .admin-topbar .spacer { flex:1; }
+    .admin-topbar .api-status {
+      font-size:0.78rem; padding:4px 10px; border-radius:20px;
+      background:rgba(255,255,255,0.08); color:var(--text-muted);
+      border:1px solid rgba(255,255,255,0.2);
     }
-    .admin-toolbar .api-status.ok { color: #4ade80; }
-    .admin-toolbar .api-status.err { color: #f87171; }
-    
-    /* 全局配置区 */
-    .global-config {
-      padding: 16px;
+    .admin-topbar .api-status.ok { color:#4ade80; border-color:rgba(74,222,128,0.3); }
+    .admin-topbar .api-status.err { color:#f87171; border-color:rgba(248,113,113,0.3); }
+    .admin-topbar .api-status.loading { color:#a7f5ea; }
+
+    /* ============ Tab 导航 ============ */
+    .admin-tabs {
+      display:flex; gap:4px; padding:4px; margin-bottom:18px;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.18);
+      border-radius:14px;
+      backdrop-filter: blur(2px) saturate(180%);
     }
-    .slider-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
+    .admin-tab {
+      flex:1; padding:10px 14px; border-radius:10px; border:none;
+      background:transparent; color:var(--text-muted);
+      font-size:0.85rem; font-weight:500; cursor:pointer;
+      transition:all 0.2s ease;
     }
-    .slider-row label { min-width: 120px; color: var(--text-muted); font-size: 0.9rem; }
-    .slider-row input[type="range"] {
-      flex: 1;
-      accent-color: var(--gold);
+    .admin-tab:hover { color:var(--text-white); background:rgba(255,255,255,0.06); }
+    .admin-tab.active {
+      background:rgba(255,255,255,0.12); color:var(--text-white);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.4),
+        inset 0 -1px 0 rgba(0,0,0,0.08);
+      backdrop-filter: blur(2px) saturate(180%);
     }
-    .slider-row .value {
-      min-width: 50px;
-      text-align: right;
-      color: var(--gold);
-      font-weight: 600;
-      font-family: var(--font-serif);
+    .admin-tab .count-badge {
+      display:inline-block; min-width:18px; padding:0 5px; height:18px; line-height:18px;
+      margin-left:6px; border-radius:9px; font-size:0.7rem; font-weight:600;
+      background:rgba(100,216,203,0.25); color:var(--gold-light);
+      border:1px solid rgba(100,216,203,0.35);
     }
-    
-    /* 卡牌编辑区表格化布局 */
-    .card-editor-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0 8px;
+
+    /* ============ 概览 Tab ============ */
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:20px; }
+    .stat-card {
+      padding:18px 20px; border-radius:14px; text-align:left;
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(2px) saturate(180%) brightness(1.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
     }
-    .card-editor-table th {
-      text-align: left;
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      font-weight: 500;
-      padding: 4px 10px;
-      letter-spacing: 0.05em;
+    .stat-card .stat-icon { font-size:1.5rem; margin-bottom:6px; }
+    .stat-card .stat-num { font-size:1.6rem; font-weight:700; color:var(--gold); font-family:serif; }
+    .stat-card .stat-label { font-size:0.78rem; color:var(--text-muted); margin-top:4px; }
+
+    .quick-actions {
+      display:flex; flex-wrap:wrap; gap:10px; padding:16px;
+      background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18);
+      border-radius:14px; margin-bottom:16px;
     }
-    .card-editor-table td {
-      padding: 8px 10px;
-      background: rgba(0,0,0,0.2);
-      border: 1px solid rgba(212,175,55,0.1);
-      font-size: 0.85rem;
-      vertical-align: top;
+    .quick-actions h3 { width:100%; margin:0 0 8px 0; font-size:0.85rem; color:var(--purple-light); font-weight:600; }
+
+    /* ============ Master-Detail 卡牌编辑 ============ */
+    .md-layout {
+      display:grid; grid-template-columns:260px 1fr; gap:16px; height:calc(100vh - 280px); min-height:480px;
     }
-    .card-editor-table tr td:first-child { border-radius: 6px 0 0 6px; }
-    .card-editor-table tr td:last-child  { border-radius: 0 6px 6px 0; }
-    
-    .card-editor-table .card-name {
-      min-width: 140px;
-      color: var(--gold);
-      font-weight: 600;
-      font-size: 0.9rem;
+    .md-list {
+      display:flex; flex-direction:column; gap:8px; overflow-y:auto;
+      padding:12px; background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.18); border-radius:14px;
+      backdrop-filter: blur(2px) saturate(180%);
     }
-    .card-editor-table .card-name small {
-      display: block;
-      color: var(--text-muted);
-      font-weight: 400;
-      font-size: 0.7rem;
-      font-style: italic;
+    .md-list .filter-row { margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.12); }
+    .md-list .filter-row input {
+      width:100%; padding:8px 10px; font-size:0.82rem; box-sizing:border-box;
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2);
+      border-radius:8px; color:var(--text-white); outline:none;
+      backdrop-filter: blur(2px) saturate(180%);
     }
-    .card-editor-table .wtd { min-width: 80px; text-align: center; }
-    
-    .card-editor-table input[type="number"],
-    .card-editor-table textarea {
-      width: 100%;
-      box-sizing: border-box;
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(157,78,221,0.25);
-      border-radius: 6px;
-      color: var(--text-white);
-      padding: 6px 8px;
-      font-size: 0.85rem;
-      font-family: inherit;
-      outline: none;
-      resize: vertical;
+    .md-list .chip-row { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+    .md-list .chip {
+      font-size:0.7rem; padding:3px 8px; border-radius:12px; cursor:pointer;
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18);
+      color:var(--text-muted); transition:all 0.15s;
     }
-    .card-editor-table input[type="number"]:focus,
-    .card-editor-table textarea:focus {
-      border-color: var(--purple-light);
-      box-shadow: 0 0 6px rgba(157,78,221,0.25);
+    .md-list .chip.active { background:rgba(100,216,203,0.25); color:#fff; border-color:rgba(100,216,203,0.45); }
+
+    .card-item {
+      display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px;
+      cursor:pointer; border:1px solid transparent;
+      transition:all 0.15s;
     }
-    .card-editor-table textarea { min-height: 44px; }
-    
-    /* 搜索过滤 */
-    .filter-row {
-      margin-bottom: 12px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
+    .card-item:hover { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.15); }
+    .card-item.active { background:rgba(100,216,203,0.18); border-color:rgba(100,216,203,0.45); }
+    .card-item img { width:32px; height:48px; object-fit:cover; border-radius:3px; border:1px solid rgba(255,255,255,0.15); flex-shrink:0; }
+    .card-item .info { min-width:0; flex:1; }
+    .card-item .name { font-size:0.82rem; color:var(--text-white); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .card-item .en { font-size:0.7rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .card-item .wt { font-size:0.7rem; font-family:monospace; color:var(--gold); flex-shrink:0; }
+
+    .md-detail {
+      padding:16px; overflow-y:auto;
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2);
+      border-radius:14px;
+      backdrop-filter: blur(2px) saturate(180%) brightness(1.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
     }
-    .filter-row input[type="text"] {
-      flex: 1;
-      min-width: 180px;
-      padding: 8px 12px;
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(212,175,55,0.2);
-      border-radius: 8px;
-      color: var(--text-white);
-      font-size: 0.9rem;
-      outline: none;
+    .md-detail .empty-state {
+      height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      color:var(--text-muted); font-size:0.85rem;
     }
-    .filter-row input[type="text"]:focus { border-color: var(--gold); }
-    
-    .filter-row button {
-      padding: 6px 14px;
-      background: transparent;
-      border: 1px solid rgba(157,78,221,0.3);
-      border-radius: 6px;
-      color: var(--purple-light);
-      cursor: pointer;
-      font-size: 0.8rem;
+    .md-detail .empty-state .big-icon { font-size:3rem; margin-bottom:12px; opacity:0.6; }
+
+    .detail-header { display:flex; gap:14px; align-items:flex-start; margin-bottom:16px; }
+    .detail-header img { width:90px; height:130px; object-fit:cover; border-radius:8px; border:1px solid rgba(255,255,255,0.2); flex-shrink:0; }
+    .detail-header .titles h2 { margin:0 0 4px 0; font-size:1.2rem; color:var(--gold); }
+    .detail-header .titles h3 { margin:0; font-size:0.85rem; color:var(--text-muted); font-weight:400; }
+
+    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .detail-field label {
+      display:block; font-size:0.75rem; color:var(--purple-light); margin-bottom:4px; font-weight:600;
     }
-    .filter-row button:hover { background: rgba(157,78,221,0.1); }
-    .filter-row button.active {
-      background: rgba(157,78,221,0.25);
-      border-color: var(--purple-light);
-      color: var(--text-white);
+    .detail-field input[type="number"],
+    .detail-field textarea {
+      width:100%; box-sizing:border-box; padding:8px 10px; font-size:0.85rem;
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2);
+      border-radius:8px; color:var(--text-white); outline:none; resize:vertical;
+      backdrop-filter: blur(2px) saturate(180%);
     }
-    
-    /* 移动端 */
-    @media (max-width: 768px) {
-      .card-editor-table,
-      .card-editor-table thead,
-      .card-editor-table tbody,
-      .card-editor-table th,
-      .card-editor-table td,
-      .card-editor-table tr {
-        display: block;
-      }
-      .card-editor-table thead { display: none; }
-      .card-editor-table tr td {
-        border-radius: 6px !important;
-        margin-bottom: 8px;
-      }
-      .card-editor-table tr td:first-child {
-        padding-bottom: 4px;
-      }
+    .detail-field textarea { min-height:80px; }
+    .detail-field.half { grid-column:span 1; }
+    .detail-field.full { grid-column:span 2; }
+
+    /* ============ 全局设置 ============ */
+    .slider-row { display:flex; align-items:center; gap:14px; }
+    .slider-row label { min-width:100px; color:var(--text-muted); font-size:0.85rem; }
+    .slider-row input[type="range"] { flex:1; accent-color: var(--gold); }
+    .slider-row .value { min-width:50px; text-align:right; color:var(--gold); font-weight:600; font-family:serif; }
+
+    .batch-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; }
+    .batch-grid button {
+      padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.2);
+      background:rgba(255,255,255,0.08); color:var(--text-white); font-size:0.82rem;
+      cursor:pointer; transition:all 0.15s;
+      backdrop-filter: blur(2px) saturate(180%);
     }
-    
-    /* Toast 提示 */
+    .batch-grid button:hover { background:rgba(255,255,255,0.14); border-color:rgba(100,216,203,0.4); }
+
+    /* ============ Toast ============ */
     .toast {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%) translateY(100px);
-      background: rgba(0,0,0,0.9);
-      border: 1px solid var(--gold);
-      border-radius: 8px;
-      padding: 12px 24px;
-      color: var(--gold);
-      font-size: 0.9rem;
-      z-index: 9999;
-      opacity: 0;
-      transition: all 0.3s ease;
-      pointer-events: none;
+      position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(100px);
+      background:rgba(10,8,25,0.95); border:1px solid var(--gold);
+      border-radius:10px; padding:12px 24px; color:var(--gold); font-size:0.9rem;
+      z-index:9999; opacity:0; transition:all 0.3s ease; pointer-events:none;
+      backdrop-filter: blur(2px) saturate(180%);
     }
-    .toast.show {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
+    .toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+    .toast.error { border-color:#f87171; color:#f87171; }
+
+    /* ============ dev.js 动态面板 ============ */
+    .dev-block { padding:14px; margin-bottom:14px; }
+    .dev-block h3 { color:var(--purple-light); font-size:0.9rem; margin:0 0 10px 0; }
+    .dev-block textarea { width:100%; box-sizing:border-box; padding:8px; font-size:0.85rem; outline:none; resize:vertical;
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:var(--text-white);
+      backdrop-filter: blur(2px) saturate(180%); }
+    .dev-grid { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+    .dev-grid label { display:flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--text-muted); cursor:pointer; }
+    .dev-select,
+    .dev-grid select,
+    .dev-block select {
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2);
+      border-radius:8px; color:var(--text-white); padding:6px 10px; font-size:0.82rem; outline:none;
+      backdrop-filter: blur(2px) saturate(180%);
     }
-    .toast.error { border-color: #f87171; color: #f87171; }
+    .dev-block input[type="password"],
+    .dev-block input[type="text"] {
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2);
+      border-radius:8px; color:var(--text-white); padding:6px 10px; font-size:0.82rem; outline:none;
+      backdrop-filter: blur(2px) saturate(180%);
+    }
+    .dev-checks { display:flex; flex-wrap:wrap; gap:10px; font-size:0.82rem; }
+    .dev-checks label { display:flex; align-items:center; gap:6px; color:var(--text-white); cursor:pointer; }
+
+    /* ============ 区块分隔 ============ */
+    .section-title {
+      display:flex; align-items:center; gap:10px; margin:0 0 12px 0;
+      padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.12);
+    }
+    .section-title h3 { margin:0; font-size:0.95rem; color:var(--purple-light); }
+    .section-title .subtitle { font-size:0.78rem; color:var(--text-muted); }
+
+    /* ============ 移动端 ============ */
+    @media (max-width: 768px) {
+      .md-layout { grid-template-columns:1fr; height:auto; }
+      .detail-grid { grid-template-columns:1fr; }
+      .detail-field.full { grid-column:span 1; }
+      .stat-grid { grid-template-columns:1fr 1fr; }
+    }
   </style>
 </head>
 
@@ -227,118 +228,154 @@
 <!-- ==================== 登录页 ==================== -->
 <div id="login-page" class="login-wrap">
   <div class="glass-card login-card">
-    <div class="header" style="margin-bottom: 20px;">
-      <h1 style="font-size: 1.8rem;">🔐 管理后台</h1>
+    <div class="header" style="margin-bottom:20px;">
+      <h1 style="font-size:1.8rem;">🔐 管理后台</h1>
       <div class="divider"></div>
     </div>
-    <p style="color: var(--text-muted); font-size: 0.85rem;">请输入管理员密码</p>
+    <p style="color:var(--text-muted); font-size:0.85rem;">请输入管理员密码</p>
     <input type="password" id="login-password" placeholder="输入密码..." autocomplete="current-password">
     <div class="btn-group">
       <button class="btn btn-primary" id="login-btn" style="width:100%;">登录</button>
     </div>
-    <p style="margin-top: 16px; font-size: 0.75rem; color: var(--text-muted); opacity: 0.7;">
-      <a href="index.html" style="color: var(--text-muted);">← 返回占卜首页</a>
+    <p style="margin-top:16px; font-size:0.75rem; color:var(--text-muted); opacity:0.7;">
+      <a href="index.html" style="color:var(--text-muted);">← 返回占卜首页</a>
     </p>
   </div>
 </div>
 
-<!-- ==================== 后台主界面（登录后显示） ==================== -->
+<!-- ==================== 后台主界面 ==================== -->
 <div id="admin-page" style="display:none;">
   <div class="container">
-    
-    <header class="header" style="margin-bottom: 24px;">
-      <h1 style="font-size: 1.8rem;">✦ cabbage塔罗 · 后台 ✦</h1>
+
+    <header class="header" style="margin-bottom:16px;">
+      <h1 style="font-size:1.6rem;">✦ cabbage塔罗 · 后台</h1>
       <div class="subtitle">Admin Control Panel</div>
     </header>
-    
-    <!-- 工具栏 -->
-    <div class="admin-toolbar glass-card" style="margin-bottom: 20px;">
-      <span class="api-status" id="api-status">API: 检查中...</span>
+
+    <!-- 顶部工具栏 -->
+    <div class="admin-topbar glass-card">
+      <span class="api-status loading" id="api-status">⏳ 连接中...</span>
       <div class="spacer"></div>
-      <select id="batch-ops" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);border-radius:6px;color:var(--text-white);padding:6px 10px;font-size:0.85rem;">
-        <option value="">⚡ 批量操作</option>
-        <option value="weight1">全部权重 = 1</option>
-        <option value="reset-text">恢复出厂文字</option>
-        <option value="upright100">全部正位概率 100%</option>
-        <option value="upright0">全部正位概率 0%</option>
-      </select>
+      <button class="btn btn-secondary" id="load-btn" style="padding:6px 14px;font-size:0.82rem;">☁️ 云端加载</button>
+      <button class="btn btn-secondary" id="export-btn" style="padding:6px 14px;font-size:0.82rem;">💾 导出</button>
       <input type="file" id="import-file" accept=".json" style="display:none;">
-      <button class="btn btn-secondary" id="import-btn">📥 导入 JSON</button>
-      <button class="btn btn-secondary" id="load-btn">☁️ 从云端加载</button>
-      <button class="btn btn-secondary" id="export-btn">💾 导出 JSON</button>
-      <button class="btn btn-secondary" id="logout-btn">🚪 退出</button>
+      <button class="btn btn-secondary" id="import-btn" style="padding:6px 14px;font-size:0.82rem;">📥 导入</button>
+      <button class="btn btn-secondary" id="logout-btn" style="padding:6px 14px;font-size:0.82rem;">🚪 退出</button>
     </div>
-    
-    <!-- 全局配置：正位概率 -->
-    <section class="glass-card global-config">
-      <h2>🌓 全局正逆位概率</h2>
-      <div class="slider-row">
+
+    <!-- Tab 导航 -->
+    <nav class="admin-tabs" id="admin-tabs">
+      <button class="admin-tab active" data-tab="overview">📊 概览</button>
+      <button class="admin-tab" data-tab="cards">🎴 卡牌编辑</button>
+      <button class="admin-tab" data-tab="settings">⚙️ 全局设置</button>
+      <button class="admin-tab" data-tab="dev">🛠️ 开发者</button>
+    </nav>
+
+    <!-- ============ Tab: 概览 ============ -->
+    <section class="glass-card admin-tab-content" data-tab-content="overview">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon">🎴</div>
+          <div class="stat-num" id="ov-total">78</div>
+          <div class="stat-label">总卡牌数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✏️</div>
+          <div class="stat-num" id="ov-modified">0</div>
+          <div class="stat-label">已自定义</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔄</div>
+          <div class="stat-num" id="ov-upright">50%</div>
+          <div class="stat-label">正位概率</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📡</div>
+          <div class="stat-num" id="ov-api">--</div>
+          <div class="stat-label">云端配置</div>
+        </div>
+      </div>
+
+      <h3 class="section-title"><span>⚡</span>快捷操作</h3>
+      <div class="quick-actions">
+        <button class="btn btn-primary" id="ov-save" style="flex:1;padding:14px;font-size:0.9rem;">💾 保存全部到云端</button>
+        <button class="btn btn-secondary" id="ov-redirect" style="padding:14px 20px;font-size:0.9rem;">🎴 跳去卡牌编辑</button>
+      </div>
+    </section>
+
+    <!-- ============ Tab: 卡牌编辑 (Master-Detail) ============ -->
+    <section class="admin-tab-content" data-tab-content="cards" style="display:none;">
+      <div class="md-layout">
+        <!-- 左侧：列表 -->
+        <div class="md-list">
+          <div class="filter-row">
+            <input type="text" id="card-search" placeholder="🔍 搜索牌名...">
+            <div class="chip-row">
+              <span class="chip active" data-chip="all">全部</span>
+              <span class="chip" data-chip="major">大阿卡那</span>
+              <span class="chip" data-chip="W">权杖</span>
+              <span class="chip" data-chip="C">圣杯</span>
+              <span class="chip" data-chip="S">宝剑</span>
+              <span class="chip" data-chip="P">钱币</span>
+            </div>
+          </div>
+          <div id="card-list-body" style="overflow-y:auto; flex:1;"></div>
+        </div>
+
+        <!-- 右侧：详情 -->
+        <div class="md-detail" id="card-detail">
+          <div class="empty-state">
+            <div class="big-icon">🎴</div>
+            <div>← 从左侧选择一张卡牌开始编辑</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Tab: 全局设置 ============ -->
+    <section class="glass-card admin-tab-content" data-tab-content="settings" style="display:none;">
+      <h3 class="section-title"><span>🌓</span>正逆位概率</h3>
+      <div class="slider-row" style="margin-bottom:16px;">
         <label>正位概率</label>
         <input type="range" id="upright-rate" min="0" max="100" step="1" value="50">
         <span class="value"><span id="upright-rate-val">50</span>%</span>
       </div>
-      <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 10px;">
-        0% 全部抽逆位，50% 正逆位均等，100% 全部抽正位
-      </p>
-    </section>
-    
-    <!-- 卡牌编辑器 -->
-    <section class="glass-card" style="overflow:hidden;">
-      <h2>🎴 78 张卡牌配置</h2>
-      
-      <div class="filter-row">
-        <input type="text" id="search" placeholder="🔍 搜索牌名（中文/英文）...">
-        <button class="btn-filter active" data-filter="all">全部</button>
-        <button class="btn-filter" data-filter="major">大阿卡那</button>
-        <button class="btn-filter" data-filter="wands">权杖</button>
-        <button class="btn-filter" data-filter="cups">圣杯</button>
-        <button class="btn-filter" data-filter="swords">宝剑</button>
-        <button class="btn-filter" data-filter="pents">钱币</button>
-        <div class="spacer" style="flex:1;"></div>
-        <span style="font-size:0.78rem;color:var(--text-muted);" id="card-count"></span>
+
+      <h3 class="section-title"><span>⚡</span>批量操作</h3>
+      <div class="batch-grid" style="margin-bottom:16px;">
+        <button data-batch="weight1">全部权重 = 1</button>
+        <button data-batch="reset-text">恢复出厂文字</button>
+        <button data-batch="upright100">全正位 100%</button>
+        <button data-batch="upright0">全逆位 0%</button>
+        <button data-batch="half-major">只大调权重×2</button>
+        <button data-batch="half-minor">只小调权重×2</button>
       </div>
-      
-      <div style="overflow-x:auto;">
-        <table class="card-editor-table" id="card-table">
-          <thead>
-            <tr>
-              <th>预览</th>
-              <th>卡牌</th>
-              <th style="width:70px;">权重</th>
-              <th>正位解读</th>
-              <th>逆位解读</th>
-              <th>关键词</th>
-              <th>元素</th>
-              <th>建议</th>
-              <th>警示</th>
-            </tr>
-          </thead>
-          <tbody id="card-tbody">
-            <!-- JS 动态填充 -->
-          </tbody>
-        </table>
+
+      <h3 class="section-title"><span>💾</span>保存 / 同步</h3>
+      <div class="quick-actions">
+        <button class="btn btn-primary" id="save-btn" style="flex:1;padding:14px;font-size:0.9rem;">💾 保存到云端</button>
+        <button class="btn btn-secondary" id="settings-load" style="padding:14px 20px;font-size:0.9rem;">☁️ 从云端加载</button>
+        <button class="btn btn-secondary" id="settings-export" style="padding:14px 20px;font-size:0.9rem;">💾 导出 JSON</button>
       </div>
     </section>
-    
-    <!-- 底部操作 -->
-    <div class="glass-card" style="text-align:center; padding: 24px;">
-      <div class="btn-group">
-        <button class="btn btn-primary" id="save-btn" style="padding: 16px 48px; font-size: 1.05rem;">
-          💾 保存到云端
-        </button>
+
+    <!-- ============ Tab: 开发者 ============ -->
+    <section class="admin-tab-content" data-tab-content="dev" style="display:none;">
+      <!-- dev.js 动态插入到这里 -->
+      <div id="dev-slot" style="min-height:200px;">
+        <div style="text-align:center; padding:60px 20px; color:var(--text-muted); font-size:0.85rem;">
+          🔒 此区域仅开发者密码登录后可见
+        </div>
       </div>
-      <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 12px;">
-        保存后所有访客访问首页都会使用新配置
-      </p>
-    </div>
-    
+    </section>
+
   </div>
 </div>
 
-<!-- Toast 提示 -->
+<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- 脚本：顺序很重要 -->
+<!-- 脚本 -->
 <script src="js/tarot-data.js"></script>
 <script src="js/config-sync.js"></script>
 <script src="js/dev.js"></script>
