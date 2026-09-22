@@ -118,6 +118,63 @@ async function handleRequest(request, env, ctx) {
       return handleChangePassword(request, env, cors);
     }
 
+    // ======== ✨ v4 新路由 ========
+
+    // A18 公告横幅
+    if (method === "GET" && pathname === "/announcement") {
+      const v = await env.TALUO_KV.get("ANNOUNCEMENT");
+      return jsonResp({ ok: true, announcement: v ? JSON.parse(v) : null }, cors);
+    }
+    if (method === "POST" && pathname === "/announcement") {
+      const body = await readBody(request);
+      if (!body) return jsonResp({ok:false,error:"empty"}, cors, 400);
+      await env.TALUO_KV.put("ANNOUNCEMENT", JSON.stringify(body));
+      return jsonResp({ ok: true }, cors);
+    }
+
+    // A19 每日卡覆盖
+    if (method === "GET" && pathname === "/daily-card") {
+      const date = url.searchParams.get("date") || new Date().toISOString().slice(0,10);
+      const v = await env.TALUO_KV.get(`DAILY_CARD_OVERRIDE_${date}`);
+      return jsonResp({ ok: true, override: v ? JSON.parse(v) : null, date }, cors);
+    }
+    if (method === "POST" && pathname === "/daily-card") {
+      const body = await readBody(request);
+      if (!body?.date) return jsonResp({ok:false,error:"need date"}, cors, 400);
+      if (body.cardId === null) await env.TALUO_KV.delete(`DAILY_CARD_OVERRIDE_${body.date}`);
+      else await env.TALUO_KV.put(`DAILY_CARD_OVERRIDE_${body.date}`, JSON.stringify({cardId: body.cardId, reason: body.reason || "", setAt: Date.now()}));
+      return jsonResp({ ok: true }, cors);
+    }
+
+    // A20 聚合数据（简化实现：从 KV 历史快照聚合）
+    if (method === "GET" && pathname === "/agg-stats") {
+      // 简化：返回已有快照数量作为活跃指标
+      const listed = await env.TALUO_KV.list({ prefix: "tarot_config_v", limit: 100 });
+      return jsonResp({ ok: true, snapshotCount: listed.keys.length, updatedAt: Date.now() }, cors);
+    }
+
+    // A22 Admin 笔记
+    if (method === "GET" && pathname === "/admin-notes") {
+      const v = await env.TALUO_KV.get("ADMIN_NOTES");
+      return jsonResp({ ok: true, notes: v ? JSON.parse(v) : [] }, cors);
+    }
+    if (method === "POST" && pathname === "/admin-notes") {
+      const body = await readBody(request);
+      if (!body) return jsonResp({ok:false,error:"empty"}, cors, 400);
+      const v = await env.TALUO_KV.get("ADMIN_NOTES");
+      let notes = v ? JSON.parse(v) : [];
+      if (body.action === "delete") notes = notes.filter(n => n.id !== body.id);
+      else notes.push({ id: crypto.randomUUID?.() || String(Date.now()), text: body.text || "", author: body.role || "admin", timestamp: Date.now() });
+      await env.TALUO_KV.put("ADMIN_NOTES", JSON.stringify(notes.slice(-50)));
+      return jsonResp({ ok: true, notes }, cors);
+    }
+
+    // C51 排行榜（简化：返回 snapshots 计数）
+    if (method === "GET" && pathname === "/rankings") {
+      const listed = await env.TALUO_KV.list({ prefix: "tarot_config_v", limit: 100 });
+      return jsonResp({ ok: true, leaderboard: listed.keys.map(k => ({ id: k.name, at: k.metadata?.time })) }, cors);
+    }
+
     // 其他 → 404
     return jsonResp({ ok: false, error: "Not Found" }, cors, 404);
 

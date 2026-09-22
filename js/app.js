@@ -341,12 +341,29 @@ async function startDivination() {
   // 防止重复点击
   if (AppState.phase !== 'idle' && AppState.phase !== 'done') return;
   
-  // 记录问题
-  AppState.question = dom.questionInput.value.trim();
+  // ✨ C42 敏感词软屏蔽
+  let rawQuestion = dom.questionInput.value.trim();
+  AppState.question = rawQuestion;
+  if (rawQuestion && window.TarotExtrasV4) {
+    const sanitized = window.TarotExtrasV4.sanitizeQuestion(rawQuestion);
+    if (sanitized !== rawQuestion) {
+      AppState.question = sanitized;
+      toast('🛡 问题已自动净化处理');
+    }
+  }
   if (!AppState.question) {
     console.log('[塔罗] 用户未输入问题，使用通用占卜');
   }
-  
+
+  // ✨ C26 呼吸引导（每次占卜前 3 秒）
+  if (window.TarotExtrasV4) {
+    await window.TarotExtrasV4.breathingGuide(6);
+  }
+  // ✨ C34 星尘召唤粒子效果
+  if (window.TarotExtrasV4) {
+    window.TarotExtrasV4.stardustSummon();
+  }
+
   // 重置之前的结果
   clearPreviousResult();
   
@@ -552,6 +569,16 @@ function renderReadingResult() {
           <span class="orientation-tag ${orientationClass}">${orientationLabel}</span>
         </div>
         <div class="meaning">${meaning}</div>
+        ${window.TarotExtrasV4 ? (() => {
+          const e = window.TarotExtrasV4.getCardEnergy({...card, orientation});
+          const color = orientation ? '#64d8cb' : '#ff8a80';
+          return `<div style="margin:8px 0 4px;font-size:0.72rem;color:var(--text-muted);display:flex;align-items:center;gap:8px;">
+            <span>能量 ${e}%</span>
+            <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${e}%;background:${color};border-radius:3px;transition:width .5s;"></div>
+            </div>
+          </div>`;
+        })() : ''}
         ${extraBlocks.length > 0 ? `
           <button class="联想-toggle" data-expand="${uniqueId}" style="margin-top:10px;font-size:0.8rem;padding:4px 12px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:4px;cursor:pointer;">展开联想 ▾</button>
           <div id="${uniqueId}" class="联想-panel" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(168,156,192,0.08);border-left:2px solid var(--gold);border-radius:0 6px 6px 0;font-size:0.85rem;">
@@ -585,6 +612,26 @@ function renderReadingResult() {
   
   dom.resultContent.innerHTML = html;
   dom.resultSection.classList.remove('hidden');
+
+  // ✨ v4：正念提示卡（80% 概率显示，避免每次打扰）
+  if (Math.random() < 0.8 && window.TarotExtrasV4) {
+    setTimeout(() => window.TarotExtrasV4.showMindfulnessCard(), 500);
+  }
+  // ✨ v4：检查成就
+  if (window.TarotExtrasV4) {
+    try {
+      const hist = JSON.parse(localStorage.getItem("tarot_history") || "[]");
+      const diary = JSON.parse(localStorage.getItem("tarot_diary") || "{}");
+      const streaks = JSON.parse(localStorage.getItem("tarot_checkins") || "[]");
+      window.TarotExtrasV4.checkAndAwardAchievements({
+        totalDraws: hist.length,
+        diaryDays: Object.keys(diary).length,
+        streak: window.TarotExtras?.getStreak?.() || 0,
+        spreadsUsed: [...new Set(hist.map(h => h.spreadName || h.spread))],
+        liquidUsed: document.body.getAttribute('data-theme') === 'liquid',
+      });
+    } catch {}
+  }
 
   // v2：绑定展开联想点击事件（事件委托）
   dom.resultContent.addEventListener('click', onExpandToggle);
