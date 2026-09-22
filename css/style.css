@@ -1532,4 +1532,133 @@ body[data-theme="liquid"] ::-webkit-scrollbar-track {
     width: 100%;
     max-width: 100%;
   }
+  .spread-selector { flex-direction: column; }
+  .cards-display.monthly-spread { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .cards-display.yearly-spread { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .cards-display.yearly-spread .card-3d { width: 70px; height: 112px; }
 }
+
+
+/* ==================== ✨ v3 新增 C11-C23 CSS ==================== */
+
+/* C13 倒计时动画 */
+@keyframes countPop {
+  0%   { transform: scale(2.5); opacity: 0; }
+  30%  { transform: scale(1);   opacity: 1; }
+  80%  { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(0.6); opacity: 0; }
+}
+
+/* C21 Hero 渐入动画 */
+@keyframes heroFadeIn {
+  from { opacity: 0; transform: translateY(24px); filter: blur(8px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+.header h1 { animation: heroFadeIn 1.2s ease-out; }
+.header .subtitle { animation: heroFadeIn 1.4s ease-out 0.15s both; }
+.header .divider { animation: heroFadeIn 1.4s ease-out 0.3s both; }
+.header p { animation: heroFadeIn 1.4s ease-out 0.45s both; }
+
+/* C14 牌阵示意图 hover 显示 */
+.spread-selector .spread-btn:hover::after {
+  content: attr(data-diagram);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 15, 45, 0.92);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 8px;
+  padding: 8px;
+  pointer-events: none;
+  white-space: nowrap;
+  color: var(--gold);
+  z-index: 100;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+.spread-selector .spread-btn { position: relative; }
+
+/* C19 情绪标签（抽牌后显示） */
+.mood-row {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  padding: 12px 16px; margin-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.mood-post-draw {
+  padding: 6px 12px; border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer; font-size: 1.2rem;
+  transition: all .2s;
+}
+.mood-post-draw:hover { background: rgba(212, 175, 55, 0.2); transform: scale(1.12); }
+
+/* C22 翻牌光效增强（液态玻璃专属） */
+body[data-theme="liquid"] .card-3d.flipped .card-front {
+  box-shadow:
+    0 0 0 1px rgba(100, 216, 203, 0.4),
+    0 0 30px rgba(100, 216, 203, 0.25),
+    0 0 80px rgba(100, 216, 203, 0.12),
+    inset 0 0 40px rgba(255,255,255,0.12);
+}
+@keyframes flipGlow {
+  0%   { box-shadow: 0 0 0 rgba(100, 216, 203, 0); }
+  50%  { box-shadow: 0 0 60px rgba(100, 216, 203, 0.5), 0 0 120px rgba(100, 216, 203, 0.3); }
+  100% { box-shadow: 0 0 30px rgba(100, 216, 203, 0.25); }
+}
+body[data-theme="liquid"] .card-3d.flipped .card-front { animation: flipGlow 1.6s ease-out; }
+
+/* C23 每日卡连续打卡徽章 */
+.daily-card .streak-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 8px; padding: 4px 10px;
+  background: linear-gradient(135deg, rgba(212,175,55,0.2), rgba(255,140,0,0.2));
+  border: 1px solid rgba(212,175,55,0.4);
+  border-radius: 14px;
+  font-size: 0.75rem; color: var(--gold);
+}
+
+/* C18 结果区卡牌点击放大提示 */
+.card-3d.flipped { cursor: zoom-in; }
+.card-3d.flipped:active { transform: scale(0.97) !important; }
+
+/* C17 历史筛选按钮 */
+.history-filters {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 8px; margin-bottom: 10px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+.history-filters button {
+  padding: 4px 12px; font-size: 0.78rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  color: var(--text-white);
+  cursor: pointer;
+  transition: all .15s;
+}
+.history-filters button:hover { background: rgba(212,175,55,0.2); }
+.history-filters button.active { background: var(--gold); color: #1a0d3d; border-color: transparent; }
+
+/* 设置面板扩展行 */
+.settings-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.85rem; color: var(--text-white);
+}
+.settings-row label { color: var(--text-muted); }
+.settings-row input[type="range"] { width: 120px; accent-color: var(--gold); }
+.settings-row .val { color: var(--gold); font-size: 0.8rem; min-width: 30px; text-align: right; }
+
+/* 结果区情绪标记入口 */
+.mood-quick-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px dashed rgba(212,175,55,0.4);
+  font-size: 0.78rem; color: var(--gold);
+  cursor: pointer; margin: 4px;
+  transition: all .15s;
+}
+.mood-quick-tag:hover { background: rgba(212,175,55,0.2); border-style: solid; }

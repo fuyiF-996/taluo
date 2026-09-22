@@ -530,3 +530,181 @@ function escapeHtml(str) {
   d.textContent = str;
   return d.innerHTML;
 }
+
+
+/* ==================== ✨ v3 Admin A1: CSV 导入/导出 ==================== */
+// CSV 导出
+document.addEventListener("click", (e) => {
+  if (e.target.id === "csv-export") {
+    const headers = ["id","name","nameEn","upright","reversed","keywords","element","advice","warning","weight"];
+    const rows = state.cards.map(c => headers.map(h => `"${String(c[h] ?? "").replace(/"/g,'""')}"`).join(","));
+    const csv = "\uFEFF" + [headers.join(","), ...rows].join("\n");  // BOM 让 Excel 正常识别 UTF-8
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `tarot-cards-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click(); URL.revokeObjectURL(a.href);
+    toast("📤 CSV 已导出");
+  }
+
+  if (e.target.id === "csv-import") {
+    $("#csv-file").click();
+  }
+
+  if (e.target.id === "csv-file") {
+    // 文件选择后触发（change 事件在下面绑定）
+  }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const csvFile = $("#csv-file");
+  if (csvFile) csvFile.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const lines = text.replace(/\r/g,"").split("\n").filter(Boolean);
+      const headers = lines[0].split(",").map(h => h.trim());
+      let imported = 0;
+      lines.slice(1).forEach(line => {
+        const cols = line.match(/(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^,]*))/g)?.map(c => c.replace(/^,?/,"").replace(/^"|"$/g,"").replace(/""/g,'"')) || [];
+        if (!cols.length) return;
+        const id = cols[0];
+        const existing = state.cards.find(c => c.id === id);
+        if (!existing) return;
+        headers.forEach((h, i) => {
+          if (h === "weight") existing.weight = parseFloat(cols[i]) || 1;
+          else if (cols[i] !== undefined && cols[i] !== "") existing[h] = cols[i];
+        });
+        imported++;
+      });
+      renderCardList(); selectCard(state.selectedId); refreshOverview();
+      toast(`✅ CSV 导入 ${imported} 张（保存到云端生效）`);
+    } catch (err) {
+      toast("❌ CSV 解析失败：" + err.message, "error");
+    }
+  });
+});
+
+
+/* ==================== ✨ v3 Admin A2: 主题色自定义 ==================== */
+const DEFAULT_THEME = { gold: "#d4af37", purple: "#9d4edd", teal: "#64d8cb", glassAlpha: 0.10, glassBlur: 2 };
+
+function applyThemeToPreview(t) {
+  const r = document.documentElement.style;
+  if (t.gold) r.setProperty("--gold", t.gold);
+  if (t.purple) r.setProperty("--purple-primary", t.purple);
+  if (t.teal) r.setProperty("--teal", t.teal);
+  if (t.glassAlpha !== undefined) r.setProperty("--glass-alpha", String(t.glassAlpha));
+  if (t.glassBlur !== undefined) r.setProperty("--glass-blur", String(t.glassBlur));
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const gold = $("#theme-gold"), pur = $("#theme-purple"), tea = $("#theme-teal"),
+        ga = $("#theme-glass-alpha"), gb = $("#theme-glass-blur");
+  if (!gold) return;
+
+  // 从已保存的主题（如果有）恢复
+  try {
+    const saved = JSON.parse(localStorage.getItem("tarot_admin_theme") || "null");
+    if (saved) {
+      gold.value = saved.gold || DEFAULT_THEME.gold;
+      pur.value = saved.purple || DEFAULT_THEME.purple;
+      tea.value = saved.teal || DEFAULT_THEME.teal;
+      ga.value = saved.glassAlpha ?? DEFAULT_THEME.glassAlpha;
+      gb.value = saved.glassBlur ?? DEFAULT_THEME.glassBlur;
+    }
+  } catch {}
+
+  $("#theme-apply")?.addEventListener("click", () => {
+    applyThemeToPreview({ gold: gold.value, purple: pur.value, teal: tea.value, glassAlpha: parseFloat(ga.value), glassBlur: parseInt(gb.value) });
+    toast("🎨 主题已应用（预览）");
+  });
+  $("#theme-reset")?.addEventListener("click", () => {
+    gold.value = DEFAULT_THEME.gold; pur.value = DEFAULT_THEME.purple; tea.value = DEFAULT_THEME.teal;
+    ga.value = DEFAULT_THEME.glassAlpha; gb.value = DEFAULT_THEME.glassBlur;
+    applyThemeToPreview(DEFAULT_THEME);
+    toast("↩ 已恢复默认主题");
+  });
+  $("#theme-save")?.addEventListener("click", () => {
+    const t = { gold: gold.value, purple: pur.value, teal: tea.value, glassAlpha: parseFloat(ga.value), glassBlur: parseInt(gb.value) };
+    localStorage.setItem("tarot_admin_theme", JSON.stringify(t));
+    // 合并到 state 里供 Worker 保存
+    state.theme = state.theme || {};
+    Object.assign(state.theme, t);
+    applyThemeToPreview(t);
+    toast("💾 主题已保存（记得点「保存到云端」）");
+  });
+});
+
+
+/* ==================== ✨ v3 Admin A4: 批量随机权重 ==================== */
+document.addEventListener("DOMContentLoaded", () => {
+  $("#batch-random-weight")?.addEventListener("click", () => {
+    if (!confirm("🎲 确定要给全部 78 张卡随机权重（0.2~3.0）吗？")) return;
+    state.cards.forEach(c => { c.weight = Math.round((0.2 + Math.random() * 2.8) * 100) / 100; });
+    renderCardList(); selectCard(state.selectedId); refreshOverview();
+    toast("🎲 已随机所有权重");
+  });
+  $("#batch-reset-weight")?.addEventListener("click", () => {
+    if (!confirm("↩ 确定要把所有权重重置为 1 吗？")) return;
+    state.cards.forEach(c => { c.weight = 1; });
+    renderCardList(); selectCard(state.selectedId); refreshOverview();
+    toast("↩ 权重已全部重置");
+  });
+});
+
+
+/* ==================== ✨ v3 Admin A5: 卡牌禁用/黑名单 ==================== */
+// selectCard 里自动读取 disabled 状态并加一个开关
+const _origSelectCard = typeof selectCard === "function" ? selectCard : null;
+// 我们通过事件委托在 selectCard 渲染后追加禁用 checkbox
+document.addEventListener("click", (e) => {
+  const toggle = e.target.closest("#card-detail .card-disabled-toggle");
+  if (!toggle) return;
+  const cardId = toggle.closest("#card-detail")?.dataset?.currentId;
+  const card = state.cards.find(c => c.id === cardId);
+  if (!card) return;
+  card.disabled = toggle.checked;
+  toast(card.disabled ? `🚫 ${card.name} 已禁用` : `✅ ${card.name} 已启用`);
+  renderCardList();
+});
+
+// 重写 selectCard 末尾追加禁用开关
+if (typeof selectCard === "function") {
+  // monkey-patch: 包装 selectCard
+  const _renderSelectCard = selectCard;
+  selectCard = function(id) {
+    _renderSelectCard(id);
+    const detail = $("#card-detail");
+    const card = state.cards.find(c => c.id === id);
+    if (!detail || !card) return;
+    // 加 data-currentId
+    detail.dataset.currentId = id;
+    // 如果还没禁用开关，加一个
+    if (!detail.querySelector(".card-disabled-toggle-wrap")) {
+      const wrap = document.createElement("div");
+      wrap.className = "card-disabled-toggle-wrap";
+      wrap.style.cssText = "margin-top:14px;padding:10px 14px;background:rgba(255,80,80,0.08);border:1px solid rgba(255,80,80,0.25);border-radius:8px;display:flex;align-items:center;gap:10px;font-size:0.85rem;color:#ff8a80;";
+      wrap.innerHTML = `
+        <label style="flex:1;">🚫 禁用此卡牌（抽牌时不会出现）</label>
+        <input type="checkbox" class="card-disabled-toggle" style="width:20px;height:20px;accent-color:#ff5252;">
+      `;
+      detail.appendChild(wrap);
+    }
+    const toggle = detail.querySelector(".card-disabled-toggle");
+    if (toggle) toggle.checked = !!card.disabled;
+    // 列表里给禁用卡加灰色
+    document.querySelectorAll(".card-item").forEach(el => {
+      const cid = el.dataset.id;
+      const c = state.cards.find(x => x.id === cid);
+      if (c?.disabled) { el.style.opacity = "0.45"; el.style.textDecoration = "line-through"; }
+      else { el.style.opacity = ""; el.style.textDecoration = ""; }
+    });
+  };
+} else {
+  // 如果 selectCard 还没定义，等 DOMContentLoaded 里 admin.js 定义完再说
+  document.addEventListener("DOMContentLoaded", () => {
+    // admin.js 已定义 selectCard，上面的 monkey-patch 应该已经生效
+  });
+}

@@ -65,6 +65,23 @@
       <div id="s-history"></div>
     </div>
 
+    <!-- ✨ v3 新面板：打卡 + 日记 + 情绪 -->
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="glass-card stat-card"><div class="num" id="s-streak">0</div><div class="label">🔥 连续打卡天数</div></div>
+      <div class="glass-card stat-card"><div class="num" id="s-diary">0</div><div class="label">📓 日记条目</div></div>
+      <div class="glass-card stat-card"><div class="num" id="s-moods">0</div><div class="label">💭 情绪标记</div></div>
+    </div>
+
+    <div class="glass-card">
+      <div class="section-title">💫 情绪分布</div>
+      <div id="s-moodchart"></div>
+    </div>
+
+    <div class="glass-card">
+      <div class="section-title">📓 最近日记</div>
+      <div id="s-diarylist"></div>
+    </div>
+
     <footer style="text-align:center;padding:20px 0;color:var(--text-muted);font-size:0.8rem;">
       <a href="index.html" style="color:var(--gold);text-decoration:none;">← 返回占卜首页</a>
     </footer>
@@ -73,6 +90,7 @@
   <script src="js/tarot-data.js"></script>
   <script src="js/config-sync.js"></script>
   <script src="js/stats.js"></script>
+  <script src="js/extras.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       const TarotStats = window.TarotStats;
@@ -143,6 +161,37 @@
           ${h.question ? `<div style="color:var(--text-muted);font-size:0.75rem;margin-top:2px;">💭 ${h.question}</div>` : ""}
         </div>`;
       }).join("");
+
+      // ✨ v3 新面板：打卡/日记/情绪
+      const diary = (() => { try { return JSON.parse(localStorage.getItem("tarot_diary") || "{}"); } catch { return {}; } })();
+      const moods = (() => { try { return JSON.parse(localStorage.getItem("tarot_moods") || "[]"); } catch { return []; } })();
+
+      document.getElementById("s-streak").textContent = window.TarotExtras?.getStreak?.() || 0;
+      document.getElementById("s-diary").textContent = Object.keys(diary).length;
+      document.getElementById("s-moods").textContent = moods.length;
+
+      // 情绪分布图
+      const mcEl = document.getElementById("s-moodchart");
+      const moodCount = {};
+      moods.forEach(m => moodCount[m.mood] = (moodCount[m.mood] || 0) + 1);
+      const moodEntries = Object.entries(moodCount).sort((a,b) => b[1] - a[1]);
+      if (moodEntries.length === 0) mcEl.innerHTML = `<div class="empty"><div class="big">💫</div>暂无情绪记录，占卜后点一下心情 emoji 吧</div>`;
+      else mcEl.innerHTML = moodEntries.map(([emoji, cnt]) => {
+        const p = Math.round(cnt / moods.length * 100);
+        return `<div class="bar-row"><span class="bar-label">${emoji}</span><div class="bar-bg"><div class="bar-fg" style="width:${p}%"></div></div><span class="bar-val">${cnt}</span></div>`;
+      }).join("");
+
+      // 日记列表（最近 10 条）
+      const dlEl = document.getElementById("s-diarylist");
+      const diaryEntries = Object.entries(diary).sort((a,b) => b[0].localeCompare(a[0])).slice(0, 10);
+      if (diaryEntries.length === 0) dlEl.innerHTML = `<div class="empty"><div class="big">📓</div>还没有日记，首页每日卡旁边点"写日记"开始吧</div>`;
+      else dlEl.innerHTML = diaryEntries.map(([date, entry]) => `
+        <div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.82rem;">
+          <span style="color:var(--gold);font-size:0.72rem;">${date}</span>
+          ${entry.mood ? `<span style="margin-left:8px;">${entry.mood}</span>` : ""}
+          ${entry.note ? `<div style="color:var(--text-white);margin-top:4px;white-space:pre-wrap;">${entry.note.slice(0, 200)}${entry.note.length > 200 ? '...' : ''}</div>` : ""}
+        </div>
+      `).join("");
     });
   </script>
 </body>

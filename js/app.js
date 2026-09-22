@@ -116,6 +116,34 @@ async function init() {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
+  // ✨ v3 新功能按钮绑定
+  // 快捷键帮助 / 数据导出按钮（如果存在）
+  document.getElementById('shortcut-help-btn')?.addEventListener('click', () => window.TarotExtras?.showShortcutHelp?.());
+  document.getElementById('diary-entry-btn')?.addEventListener('click', () => {
+    const today = new Date().toDateString();
+    const hash = [...today].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
+    const card = TAROT_DECK[Math.abs(hash) % TAROT_DECK.length];
+    window.TarotExtras?.openDiaryModal?.(card);
+  });
+  document.getElementById('export-data-btn')?.addEventListener('click', () => {
+    if (confirm('导出所有本地数据（历史/日记/打卡/情绪）到 JSON 文件？')) {
+      window.TarotExtras?.exportAllData?.();
+    }
+  });
+
+  // ✨ C18 全局：点击翻出的卡牌放大
+  document.addEventListener('click', (e) => {
+    const flipped = e.target.closest('.card-3d.flipped');
+    if (!flipped) return;
+    const front = flipped.querySelector('.card-front');
+    if (!front) return;
+    const img = front.querySelector('img');
+    if (!img) return;
+    const cardId = flipped.dataset.cardId || flipped.querySelector('[data-card-id]')?.dataset.cardId;
+    const card = TAROT_DECK.find(c => c.id === cardId);
+    if (card) window.TarotExtras?.openCardModal?.(card);
+  });
+
   console.log('[塔罗] 页面已初始化，牌组数量:', TAROT_DECK.length);
 }
 
@@ -208,6 +236,29 @@ function renderDailyCard() {
     img.src = card.imageUrl || `images-webp/${card.id}.webp`;
     img.onerror = () => { img.src = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 120%22><rect width=%2280%22 height=%22120%22 fill=%22%232d1b4e%22 rx=%228%22/><text x=%2240%22 y=%2270%22 text-anchor=%22middle%22 font-size=%2240%22 fill=%22%2364d8cb%22>✦</text></svg>'; };
   }
+
+  // ✨ C23 连续打卡徽章
+  const streak = window.TarotExtras?.getStreak?.() || 0;
+  const rightCol = document.querySelector('#daily-card .dc-right');
+  if (rightCol && streak > 0 && !rightCol.querySelector('.streak-badge')) {
+    const badge = document.createElement("div");
+    badge.className = "streak-badge";
+    badge.textContent = `🔥 连续打卡 ${streak} 天`;
+    rightCol.insertBefore(badge, rightCol.querySelector('#daily-advice').nextSibling);
+  }
+
+  // ✨ C11 日记按钮绑定
+  document.getElementById('daily-diary')?.addEventListener('click', () => {
+    window.TarotExtras?.openDiaryModal?.(card);
+  });
+  // ✨ C18 大图预览按钮
+  document.getElementById('daily-big')?.addEventListener('click', () => {
+    window.TarotExtras?.openCardModal?.(card);
+  });
+  // 图片本身也能点大图
+  img?.addEventListener('click', () => window.TarotExtras?.openCardModal?.(card));
+  if (img) img.style.cursor = 'zoom-in';
+
   el.style.display = '';
 }
 
@@ -510,6 +561,17 @@ function renderReadingResult() {
       </div>
     `;
   });
+
+  // v3：情绪标记行
+  html += `
+    <div class="mood-row" style="margin-top:20px;">
+      <span style="font-size:0.82rem;color:var(--text-muted);margin-right:4px;align-self:center;">这次抽牌的感受：</span>
+      ${['😊开心','😐平静','😟担忧','🔥兴奋','💤疲惫','🤔深思','💖感恩'].map(m => {
+        const [emoji, label] = m.split('');
+        return `<button class="mood-quick-tag" data-mood="${emoji}" title="标记此情绪">${emoji} ${label}</button>`;
+      }).join('')}
+    </div>
+  `;
 
   // v2：底部分享按钮
   html += `

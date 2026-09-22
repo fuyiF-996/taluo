@@ -235,6 +235,78 @@
     else toast(data.error, "error");
   }
 
+  /* ==================== ✨ v3 Admin A3: 快照 diff 对比 ==================== */
+  // 在快照列表底部加 diff 按钮
+  function renderSnapshotDiffUI() {
+    const list = document.getElementById("d-snapshots-list");
+    if (!list || list.querySelector(".diff-ui")) return;
+    const ui = document.createElement("div");
+    ui.className = "diff-ui";
+    ui.style.cssText = "margin-top:14px;padding:12px;background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.3);border-radius:8px;";
+    ui.innerHTML = `
+      <div style="font-size:0.85rem;color:var(--gold);margin-bottom:8px;">🔍 快照对比（选两个快照看差异）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="diff-snap-a" style="flex:1;padding:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:4px;color:var(--text-white);min-width:140px;"></select>
+        <span style="align-self:center;color:var(--text-muted);">vs</span>
+        <select id="diff-snap-b" style="flex:1;padding:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:4px;color:var(--text-white);min-width:140px;"></select>
+        <button id="diff-run" style="padding:6px 14px;background:var(--gold);color:#1a0d3d;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">对比</button>
+      </div>
+      <div id="diff-result" style="margin-top:10px;font-size:0.8rem;max-height:200px;overflow-y:auto;"></div>
+    `;
+    list.appendChild(ui);
+
+    ui.querySelector("#diff-run").addEventListener("click", async () => {
+      const aId = ui.querySelector("#diff-snap-a").value;
+      const bId = ui.querySelector("#diff-snap-b").value;
+      if (!aId || !bId) { ui.querySelector("#diff-result").textContent = "请先加载快照列表"; return; }
+      try {
+        const [ra, rb] = await Promise.all([
+          fetch(`${window.API_BASE}/snapshots/${aId}`).then(r => r.json()),
+          fetch(`${window.API_BASE}/snapshots/${bId}`).then(r => r.json()),
+        ]);
+        const diff = deepDiff(ra.config || ra, rb.config || rb);
+        const result = ui.querySelector("#diff-result");
+        if (Object.keys(diff).length === 0) {
+          result.innerHTML = `<span style="color:#64d8cb;">✅ 两个快照完全相同</span>`;
+        } else {
+          result.innerHTML = `<pre style="white-space:pre-wrap;color:#ff8a80;">${JSON.stringify(diff, null, 2)}</pre>`;
+        }
+      } catch (err) {
+        ui.querySelector("#diff-result").textContent = "❌ 对比失败：" + err.message;
+      }
+    });
+  }
+
+  // 简单深 diff
+  function deepDiff(a, b, path = "") {
+    const out = {};
+    if (typeof a !== "object" || typeof b !== "object") {
+      if (a !== b) out[path] = { old: a, new: b };
+      return out;
+    }
+    const keys = new Set([...Object.keys(a||{}), ...Object.keys(b||{})]);
+    for (const k of keys) {
+      const p = path ? path + "." + k : k;
+      if (!(k in a)) out[p] = { old: undefined, new: b[k] };
+      else if (!(k in b)) out[p] = { old: a[k], new: undefined };
+      else Object.assign(out, deepDiff(a[k], b[k], p));
+    }
+    return out;
+  }
+
+  // 包装 loadSnapshots 在渲染完列表后追加 diff UI
+  const _origLoadSnapshots = loadSnapshots;
+  loadSnapshots = async function() {
+    await _origLoadSnapshots();
+    renderSnapshotDiffUI();
+    // 填充 select
+    const selA = document.getElementById("diff-snap-a");
+    const selB = document.getElementById("diff-snap-b");
+    if (selA && window.__lastSnapshots) {
+      selA.innerHTML = selB.innerHTML = window.__lastSnapshots.map(s => `<option value="${s.id}">${s.id.slice(-8)} · ${new Date(s.timestamp).toLocaleString('zh-CN')}</option>`).join("");
+    }
+  };
+
   // 暴露到 window 方便 admin.js 调用
   window.TarotDev = { bindDev };
 })();

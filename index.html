@@ -46,7 +46,11 @@
         <div class="dc-label">今日指引</div>
         <div class="dc-name" id="daily-name">加载中...</div>
         <div class="dc-advice" id="daily-advice">—</div>
-        <button class="btn btn-secondary" id="daily-use" style="margin-top:10px;padding:6px 14px;font-size:0.8rem;">🎴 用这张卡开始</button>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary" id="daily-use" style="padding:6px 14px;font-size:0.8rem;">🎴 用这张卡开始</button>
+          <button class="btn btn-secondary" id="daily-diary" style="padding:6px 14px;font-size:0.8rem;">📓 写日记</button>
+          <button class="btn btn-secondary" id="daily-big" style="padding:6px 14px;font-size:0.8rem;">🔍 大图</button>
+        </div>
       </div>
     </section>
 
@@ -182,6 +186,7 @@
   <script src="js/feedback.js"></script>
   <script src="js/share-image.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/extras.js"></script>
 
   <!-- ★ 苹果液态玻璃 SVG 折射滤镜（Chrome 渐进增强）
        feTurbulence 低 baseFrequency = 大尺度平滑扭曲

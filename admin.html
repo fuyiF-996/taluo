@@ -305,6 +305,16 @@
 
     <!-- ============ Tab: 卡牌编辑 (Master-Detail) ============ -->
     <section class="admin-tab-content" data-tab-content="cards" style="display:none;">
+      <!-- ✨ v3 Admin A1+A4: CSV 工具栏 -->
+      <div style="display:flex;gap:8px;padding:10px;margin-bottom:10px;background:rgba(255,255,255,0.05);border-radius:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary" id="csv-import" style="font-size:0.8rem;padding:6px 12px;">📥 CSV 导入</button>
+        <button class="btn btn-secondary" id="csv-export" style="font-size:0.8rem;padding:6px 12px;">📤 CSV 导出</button>
+        <input type="file" id="csv-file" accept=".csv" style="display:none;">
+        <button class="btn btn-secondary" id="batch-random-weight" style="font-size:0.8rem;padding:6px 12px;">🎲 全牌随机权重</button>
+        <button class="btn btn-secondary" id="batch-reset-weight" style="font-size:0.8rem;padding:6px 12px;">↩ 重置所有权重=1</button>
+        <span id="csv-status" style="color:var(--text-muted);font-size:0.78rem;align-self:center;"></span>
+      </div>
+
       <div class="md-layout">
         <!-- 左侧：列表 -->
         <div class="md-list">
@@ -356,6 +366,36 @@
         <button class="btn btn-primary" id="save-btn" style="flex:1;padding:14px;font-size:0.9rem;">💾 保存到云端</button>
         <button class="btn btn-secondary" id="settings-load" style="padding:14px 20px;font-size:0.9rem;">☁️ 从云端加载</button>
         <button class="btn btn-secondary" id="settings-export" style="padding:14px 20px;font-size:0.9rem;">💾 导出 JSON</button>
+      </div>
+
+      <!-- ✨ v3 Admin A2: 主题色自定义 -->
+      <h3 class="section-title"><span>🎨</span>主题色自定义（液态玻璃）</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">
+        <div class="slider-row" style="flex-direction:column;gap:4px;">
+          <label>主金色 --gold</label>
+          <input type="color" id="theme-gold" value="#d4af37">
+        </div>
+        <div class="slider-row" style="flex-direction:column;gap:4px;">
+          <label>强调色 --purple-primary</label>
+          <input type="color" id="theme-purple" value="#9d4edd">
+        </div>
+        <div class="slider-row" style="flex-direction:column;gap:4px;">
+          <label>副色 --teal</label>
+          <input type="color" id="theme-teal" value="#64d8cb">
+        </div>
+        <div class="slider-row" style="flex-direction:column;gap:4px;">
+          <label>玻璃透明度</label>
+          <input type="range" id="theme-glass-alpha" min="0.02" max="0.25" step="0.01" value="0.10">
+        </div>
+        <div class="slider-row" style="flex-direction:column;gap:4px;">
+          <label>玻璃模糊强度</label>
+          <input type="range" id="theme-glass-blur" min="0" max="12" step="1" value="2">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn btn-secondary" id="theme-apply" style="font-size:0.8rem;">✅ 立即应用到当前预览</button>
+        <button class="btn btn-secondary" id="theme-reset" style="font-size:0.8rem;">↩ 恢复默认</button>
+        <button class="btn btn-secondary" id="theme-save" style="font-size:0.8rem;">💾 保存到云端</button>
       </div>
     </section>
 
