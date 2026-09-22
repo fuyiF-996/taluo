@@ -229,7 +229,14 @@ function renderDailyCard() {
   const idx = Math.abs(hash) % TAROT_DECK.length;
   const card = TAROT_DECK[idx];
 
-  document.getElementById('daily-date').textContent = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+  const dateEl = document.getElementById('daily-date');
+  if (dateEl) {
+    dateEl.dataset.lunar = '';   // 允许重新追加农历（避免 defer 时序下被覆盖）
+    dateEl.textContent = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+    // index.html 的脚本都改成了 defer，extras-v4 可能在本次赋值前就跑过，
+    // 这里主动补一次农历，保证日期始终带农历且只出现一次。
+    window.TarotExtrasV4?.appendLunarToDailyDate?.();
+  }
   document.getElementById('daily-name').textContent = `${card.name} · ${card.nameEn}`;
   document.getElementById('daily-advice').textContent = card.advice || card.upright?.slice(0, 40) + '...' || '静心冥想，让今日指引为你指明方向。';
   const img = document.getElementById('daily-img');

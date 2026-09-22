@@ -103,7 +103,9 @@ function generateDailyPrompts(card) {
     '太阳|成功|喜悦|活力': ['我最近该庆祝什么？','我的能量如何发挥？'],
     '审判|重生|觉醒|召唤': ['我该如何回应内心的召唤？','是时候做出改变了吗？'],
   };
-  keywordQuestionMap.forEach((qs, pattern) => {
+  // ⚠ 修复：keywordQuestionMap 是普通对象，没有 .forEach（旧代码这里会抛
+  // TypeError: keywordQuestionMap.forEach is not a function，整个联想功能失效）
+  Object.entries(keywordQuestionMap).forEach(([pattern, qs]) => {
     if (new RegExp(pattern).test(card.name + (card.keywords || ''))) {
       qs.forEach(q => prompts.push(q));
     }
@@ -274,15 +276,20 @@ function focusMode() {
 function createCrystalBall() {
   const ball = document.createElement("div");
   ball.id = "crystal-ball";
-  ball.style.cssText = "position:fixed;right:18px;bottom:80px;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,rgba(157,78,221,0.8),rgba(100,216,203,0.6));box-shadow:0 0 20px rgba(157,78,221,0.6),inset 0 0 15px rgba(255,255,255,0.4);cursor:pointer;z-index:9000;transition:transform 0.3s;animation:crystalGlow 3s ease-in-out infinite;";
+  // ⚠ 性能：光晕不再 animation 到 box-shadow（每帧重绘），
+  // 改成静态阴影 + 内部光晕元素只动 opacity（纯合成动画，几乎零开销）
+  ball.style.cssText = "position:fixed;right:18px;bottom:80px;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,rgba(157,78,221,0.8),rgba(100,216,203,0.6));box-shadow:0 0 18px rgba(157,78,221,0.5),inset 0 0 15px rgba(255,255,255,0.4);cursor:pointer;z-index:9000;transition:transform 0.3s;";
   ball.title = "🪄 点我有惊喜";
+  const halo = document.createElement("i");
+  halo.style.cssText = "position:absolute;inset:-5px;border-radius:50%;pointer-events:none;box-shadow:0 0 26px rgba(100,216,203,0.85);opacity:0.45;animation:crystalGlow 3s ease-in-out infinite;";
+  ball.appendChild(halo);
   ball.addEventListener('click', () => {
     ball.style.transform = "scale(0.9) rotate(180deg)";
     setTimeout(() => { ball.style.transform = ""; burstRainbowParticles(ball); }, 200);
   });
   document.body.appendChild(ball);
   const style = document.createElement("style");
-  style.textContent = `@keyframes crystalGlow{0%,100%{box-shadow:0 0 20px rgba(157,78,221,0.6)}50%{box-shadow:0 0 35px rgba(100,216,203,0.8)}}@keyframes mindPop{from{opacity:0;transform:translate(-50%,-50%) scale(0.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}`;
+  style.textContent = `@keyframes crystalGlow{0%,100%{opacity:.3}50%{opacity:1}}@keyframes mindPop{from{opacity:0;transform:translate(-50%,-50%) scale(0.7)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}`;
   document.head.appendChild(style);
 }
 
@@ -408,6 +415,23 @@ function renderCardConnections(containerId, spread, cardItems) {
 }
 
 
+/* ==================== C37b: 农历注入每日卡 ==================== */
+/**
+ * 把农历追加到每日卡日期后面（幂等，重复调用不会叠加）。
+ * index.html 里的脚本已全部改为 defer，app.js 的 renderDailyCard() 会在
+ * DOMContentLoaded 时重写这段文本，所以这里导出函数，由 app.js 在写完之后调用，
+ * 避免出现「农历被覆盖掉」的时序问题。
+ */
+function appendLunarToDailyDate() {
+  const dailyDate = document.getElementById('daily-date');
+  if (!dailyDate) return;
+  if (dailyDate.dataset.lunar === '1') return;
+  const lunar = getLunarDate();
+  dailyDate.textContent = `${dailyDate.textContent} · ${lunar.zodiac}年 ${lunar.monthStr}${lunar.dayStr}`;
+  dailyDate.dataset.lunar = '1';
+}
+
+
 /* ==================== 初始化 ==================== */
 function init() {
   // 注入问题模板
@@ -430,12 +454,7 @@ function init() {
   }
 
   // 农历显示注入
-  const dailyDate = document.getElementById('daily-date');
-  if (dailyDate) {
-    const lunar = getLunarDate();
-    const origText = dailyDate.textContent;
-    dailyDate.textContent = `${origText} · ${lunar.zodiac}年 ${lunar.monthStr}${lunar.dayStr}`;
-  }
+  appendLunarToDailyDate();
 
   console.log('[塔罗ExtrasV4] C24-C50 已加载');
 }
@@ -446,6 +465,7 @@ else init();
 return {
   // C37 农历
   getLunarDate,
+  appendLunarToDailyDate,
   // C29 模板
   QUESTION_TEMPLATES, injectQuestionTemplates,
   // C24 联想

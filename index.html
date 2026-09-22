@@ -8,10 +8,36 @@
   
   <title>cabbage塔罗 · 神秘抽牌</title>
   
-  <!-- U3: Cormorant Garamond serif italic 字体 -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Noto+Serif+SC:wght@400&display=swap" rel="stylesheet">
+  <!-- ⚡ 性能守卫：必须在首屏渲染前执行
+       低端设备（核心数/内存很低）或系统开启了「减少动效」时，直接给根元素加
+       .perf-lite，关掉毛玻璃 backdrop-filter 和无限循环动画，避免首屏卡死。 -->
+  <script>
+    (function () {
+      try {
+        var cores = navigator.hardwareConcurrency || 4;
+        var mem = navigator.deviceMemory || 4;
+        var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (cores <= 2 || mem <= 2 || calm) {
+          document.documentElement.classList.add('perf-lite');
+        }
+      } catch (e) { /* 忽略：不影响任何功能 */ }
+    })();
+  </script>
+
+  <!-- U3: Cormorant Garamond serif italic 字体
+       ⚠ 性能红线：这里绝对不能用阻塞渲染的 <link rel="stylesheet">。
+       fonts.googleapis.com 在部分网络环境（如国内）不可达，请求会一直挂起，
+       浏览器要等到超时才绘制第一帧 —— 表现就是「白屏很久 / 像卡死」。
+       改用异步加载：media="print" 不阻塞渲染，加载成功后再切回 all；
+       字体拿不到也完全不影响页面，CSS 里已备好系统衬线字体兜底。
+       同时去掉 preconnect：连不通的域名没必要提前占连接。 -->
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Noto+Serif+SC:wght@400&display=swap"
+        media="print" onload="this.media='all';this.onload=null">
+  <noscript>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Noto+Serif+SC:wght@400&display=swap">
+  </noscript>
   
   <!-- 主样式 -->
   <link rel="stylesheet" href="css/style.css">
@@ -188,19 +214,27 @@
   </div>
   
   <!-- ==================== 脚本引入 ==================== -->
-  <!-- 注意：顺序很重要！先数据文件，再配置同步，再设置面板，最后应用逻辑 -->
-  <script src="js/tarot-data.js"></script>
-  <script src="js/config-sync.js"></script>
-  <script src="js/settings.js"></script>
-  <script src="js/feedback.js"></script>
-  <script src="js/share-image.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/extras.js"></script>
-  <script src="js/extras-v4.js"></script>
+  <!-- 注意：顺序很重要！先数据文件，再配置同步，再设置面板，最后应用逻辑。
+       全部使用 defer：不再阻塞 HTML 解析，首屏能更早画出来；
+       defer 会严格按文档顺序执行，所以上面的依赖顺序依然成立。 -->
+  <script defer src="js/tarot-data.js"></script>
+  <script defer src="js/config-sync.js"></script>
+  <script defer src="js/settings.js"></script>
+  <script defer src="js/feedback.js"></script>
+  <script defer src="js/share-image.js"></script>
+  <script defer src="js/app.js"></script>
+  <script defer src="js/extras.js"></script>
+  <script defer src="js/extras-v4.js"></script>
+  <!-- 性能看门狗：实测帧率过低时自动切到 .perf-lite（关毛玻璃/无限动画） -->
+  <script defer src="js/perf.js"></script>
 
   <!-- ★ 苹果液态玻璃 SVG 折射滤镜（Chrome 渐进增强）
        feTurbulence 低 baseFrequency = 大尺度平滑扭曲
-       feDisplacementMap 模拟玻璃边缘的光线折射 -->
+       feDisplacementMap 模拟玻璃边缘的光线折射
+
+       ⚠ 性能提示：这个滤镜已经不再用于 backdrop-filter（见 css/style.css 的注释）。
+       在 backdrop-filter 里用 SVG 滤镜会退化成软件逐帧光栅化，开面板就卡死。
+       定义保留在这里，供需要时（静态装饰、非毛玻璃元素）通过 filter: url(#liquid-distort) 使用。 -->
   <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute">
     <defs>
       <filter id="liquid-distort" x="-5%" y="-5%" width="110%" height="110%">
