@@ -101,19 +101,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function init() {
   bindEvents();
-  // 从云端拉配置（失败自动降级，不阻塞页面）
-  if (window.loadCloudConfig) {
-    await window.loadCloudConfig();
-  }
-  // v2：根据云端 enabledSpreads 禁用/隐藏牌阵按钮
+  // 先完成本地首屏初始化，云端配置在后台加载，避免网络异常卡住页面。
   applySpreadButtons();
-
-  // ✨ C1: 每日一张卡
   renderDailyCard();
 
   // ✨ C8: PWA Service Worker 注册
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  // 云端配置只负责增强本地默认值，不应阻塞首屏交互。
+  if (window.loadCloudConfig) {
+    window.loadCloudConfig().then(() => {
+      applySpreadButtons();
+    }).catch(() => {});
   }
 
   // ✨ v3 新功能按钮绑定

@@ -2,7 +2,7 @@
  * cabbage塔罗 Service Worker —— PWA 离线支持
  * 策略：stale-while-revalidate 缓存静态资源；network-first 缓存 API
  */
-const CACHE_NAME = "tarot-v5";
+const CACHE_NAME = "tarot-v6";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -64,11 +64,22 @@ self.addEventListener("fetch", e => {
   if (/\.(webp|png|jpg|jpeg|svg|gif)$/i.test(url.pathname)) {
     e.respondWith(
       caches.match(req).then(cached => {
-        // 后台更新缓存
-        fetch(req).then(resp => {
-          if (resp.ok) caches.open(CACHE_NAME).then(c => c.put(req, resp));
-        }).catch(() => {});
-        return cached || fetch(req);
+        if (cached) {
+          // 已缓存时后台更新；首屏直接使用缓存，不等待网络。
+          fetch(req).then(resp => {
+            if (resp.ok) caches.open(CACHE_NAME).then(c => c.put(req, resp));
+          }).catch(() => {});
+          return cached;
+        }
+
+        // 未缓存时只发起一次请求，并把同一个响应写入缓存。
+        return fetch(req).then(resp => {
+          if (resp.ok) {
+            const clone = resp.clone();
+            caches.open(CACHE_NAME).then(c => c.put(req, clone));
+          }
+          return resp;
+        });
       })
     );
     return;
@@ -77,10 +88,20 @@ self.addEventListener("fetch", e => {
   // 静态 HTML/CSS/JS → stale-while-revalidate
   e.respondWith(
     caches.match(req).then(cached => {
-      fetch(req).then(resp => {
-        if (resp.ok) caches.open(CACHE_NAME).then(c => c.put(req, resp));
-      }).catch(() => {});
-      return cached || fetch(req);
+      if (cached) {
+        fetch(req).then(resp => {
+          if (resp.ok) caches.open(CACHE_NAME).then(c => c.put(req, resp));
+        }).catch(() => {});
+        return cached;
+      }
+
+      return fetch(req).then(resp => {
+        if (resp.ok) {
+          const clone = resp.clone();
+          caches.open(CACHE_NAME).then(c => c.put(req, clone));
+        }
+        return resp;
+      });
     })
   );
 });
