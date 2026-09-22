@@ -42,6 +42,10 @@ const ALLOWED_ORIGINS = [
   "https://taluo996.top",
   "https://www.taluo996.top",
   "http://localhost:8080",
+  "http://localhost:8765",
+  "http://127.0.0.1:8765",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
 ];
 
 

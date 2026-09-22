@@ -2,7 +2,7 @@
  * cabbage塔罗 Service Worker —— PWA 离线支持
  * 策略：stale-while-revalidate 缓存静态资源；network-first 缓存 API
  */
-const CACHE_NAME = "tarot-v4";
+const CACHE_NAME = "tarot-v5";
 const STATIC_ASSETS = [
   "./",
   "./index.html",

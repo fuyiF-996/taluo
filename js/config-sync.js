@@ -46,11 +46,16 @@ const CloudConfig = {
  * 异步拉取云端配置并合并到 TAROT_DECK
  */
 async function loadCloudConfig() {
+  // ⚠ 仅改这一处：8 秒超时，不动任何其他逻辑
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
   try {
     const resp = await fetch(`${API_BASE}/`, {
       method: "GET",
       headers: { "Accept": "application/json" },
+      signal: ctrl.signal,
     });
+    clearTimeout(t);
     if (!resp.ok) throw new Error(`API 返回 ${resp.status}`);
 
     const data = await resp.json();
@@ -64,7 +69,12 @@ async function loadCloudConfig() {
     console.log("[塔罗] 云端配置已加载 ✓");
 
   } catch (err) {
-    console.warn("[塔罗] 无法连接云端 API，使用内置默认值：", err.message);
+    clearTimeout(t);
+    if (err.name === 'AbortError') {
+      console.warn("[塔罗] 云端 API 超时（>8s），使用内置默认值");
+    } else {
+      console.warn("[塔罗] 无法连接云端 API，使用内置默认值：", err.message);
+    }
   }
 }
 
