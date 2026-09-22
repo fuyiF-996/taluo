@@ -987,4 +987,555 @@ document.addEventListener("DOMContentLoaded", () => {
       clearInterval(checkTab);
     }
   }, 200);
-});
+
+}); // ← 闭合 946 行的 DOMContentLoaded
+
+/* =====================================================
+   ✨ v5 Admin — 20 个新功能 (A18b ~ A37b)
+   纯前端，零 Worker 路由改动
+   ===================================================== */
+(function adminV5() {
+  // ======== A27b: Tab 切换记忆位置 ========
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      const tabs = document.querySelectorAll('.admin-tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          localStorage.setItem('admin_last_tab', tab.dataset.tab || tab.textContent.trim());
+        });
+      });
+      const last = localStorage.getItem('admin_last_tab');
+      if (last) {
+        const target = document.querySelector(`.admin-tab[data-tab="${last}"]`);
+        if (target) target.click();
+      }
+    }, 500);
+  });
+
+  // ======== A18b: renderDashboard 扩展 — 10 指标徽章 + A24b 饼图 Canvas ========
+  const _origRenderDashboard = typeof renderDashboard === 'function' ? renderDashboard : null;
+  if (_origRenderDashboard) {
+    renderDashboard = function() {
+      _origRenderDashboard();
+      try {
+        if (!window.AdminState?.config) return;
+        const cards = window.AdminState.config.cards || [];
+        const enabled = cards.filter(c => !c.disabled).length;
+        const disabled = cards.filter(c => c.disabled).length;
+        const majors = cards.filter(c => c.id.startsWith('M')).length;
+        const minors = cards.length - majors;
+        const weights = cards.filter(c => !c.disabled).map(c => c.weight || 1);
+        const avgW = weights.length ? (weights.reduce((a,b)=>a+b,0)/weights.length).toFixed(2) : '—';
+        const mean = weights.length ? weights.reduce((a,b)=>a+b,0)/weights.length : 0;
+        const sigma = weights.length ? Math.sqrt(weights.reduce((a,b)=>a+(b-mean)**2,0)/weights.length).toFixed(2) : '—';
+        const allKWs = new Set();
+        cards.forEach(c => (c.keywords||[]).forEach(k => allKWs.add(k)));
+        const themes = new Set(cards.map(c => c.theme || c.element || 'unknown'));
+        const lastSave = localStorage.getItem('admin_config_ts');
+        const snapCount = (localStorage.getItem('admin_snapshots') || '[]').length ? JSON.parse(localStorage.getItem('admin_snapshots')).length : 0;
+
+        // 在概览 Tab 末尾追加 10 个徽章 + 饼图
+        const overviewContent = document.querySelector('.admin-tab-content[data-content="overview"], .admin-overview, #tab-overview');
+        const target = overviewContent || document.querySelector('.admin-tab-content.active, .admin-tab-content');
+        if (target && !document.getElementById('v5-metrics-row')) {
+          const row = document.createElement('div');
+          row.id = 'v5-metrics-row';
+          row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;';
+          const metrics = [
+            ['✅ 启用', enabled, '#64d8cb'],
+            ['🚫 禁用', disabled, '#ff6b6b'],
+            ['🌀 大调', majors, '#9d4edd'],
+            ['🔱 小调', minors, '#d4af37'],
+            ['⚖️ 均权', avgW, '#64d8cb'],
+            ['σ 标准差', sigma, '#ffd93d'],
+            ['🏷 关键词', allKWs.size, '#a78bfa'],
+            ['🎨 主题', themes.size, '#64d8cb'],
+            ['⏰ 上次保存', lastSave ? new Date(parseInt(lastSave)).toLocaleString().slice(0,16) : '—', '#d4af37'],
+            ['📸 快照', snapCount, '#ffd93d'],
+          ];
+          metrics.forEach(([label, val, color]) => {
+            const chip = document.createElement('div');
+            chip.style.cssText = `padding:6px 12px;background:rgba(255,255,255,0.06);border:1px solid ${color}50;border-radius:14px;font-size:0.75rem;color:${color};`;
+            chip.textContent = `${label}: ${val}`;
+            row.appendChild(chip);
+          });
+          target.appendChild(row);
+
+          // A24b 权重分布饼图
+          try {
+            const enabledCards = cards.filter(c => !c.disabled);
+            const buckets = [0,1,2,3,4,5];
+            const counts = buckets.map(b => enabledCards.filter(c => Math.round(c.weight||1) === b).length);
+            const canvas = document.createElement('canvas');
+            canvas.width = 120; canvas.height = 120;
+            canvas.style.cssText = 'margin-top:12px;border-radius:50%;';
+            const ctx = canvas.getContext('2d');
+            const total = counts.reduce((a,b)=>a+b,0) || 1;
+            const pieColors = ['#64d8cb','#d4af37','#9d4edd','#ff6b6b','#a78bfa','#ffd93d'];
+            let startAngle = -Math.PI/2;
+            counts.forEach((cnt, i) => {
+              if (cnt === 0) return;
+              const sliceAngle = (cnt/total) * Math.PI * 2;
+              ctx.beginPath();
+              ctx.moveTo(60, 60);
+              ctx.arc(60, 60, 50, startAngle, startAngle + sliceAngle);
+              ctx.fillStyle = pieColors[i];
+              ctx.fill();
+              startAngle += sliceAngle;
+            });
+            // 中心圆（环形饼图）
+            ctx.beginPath();
+            ctx.arc(60, 60, 28, 0, Math.PI * 2);
+            ctx.fillStyle = '#1a0d3d';
+            ctx.fill();
+            ctx.fillStyle = '#d4af37';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(`${total}`, 60, 58);
+            ctx.font = '8px sans-serif'; ctx.fillStyle = '#a090c8';
+            ctx.fillText('启用卡', 60, 72);
+            row.parentElement.insertBefore(canvas, row.nextSibling);
+
+            // 图例
+            const legend = document.createElement('div');
+            legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;font-size:0.7rem;';
+            buckets.forEach((b, i) => {
+              const span = document.createElement('span');
+              span.style.cssText = `color:${pieColors[i]};`;
+              span.textContent = `权重${b}×${counts[i]}`;
+              legend.appendChild(span);
+            });
+            row.parentElement.insertBefore(legend, canvas.nextSibling);
+          } catch(ce) { /* 忽略 canvas 错误 */ }
+        }
+      } catch(e) { console.warn('[v5] dashboard ext error', e); }
+    };
+  }
+
+  // ======== A19b + A20b: renderCardList 排序 + 禁用筛选 ========
+  const _origRenderList = typeof renderCardList === 'function' ? renderCardList : null;
+  let v5SortDir = 'none';   // none | asc | desc
+  let v5FilterDisabled = false;
+  if (_origRenderList) {
+    renderCardList = function() {
+      // 先调用原始
+      _origRenderList();
+      try {
+        if (!window.AdminState?.config) return;
+        // 找到列表容器
+        const container = document.getElementById('card-list') || document.querySelector('.admin-card-list');
+        if (!container || container.dataset.v5enhanced === '1') return;
+        // 在列表顶部插入排序/筛选栏
+        const bar = document.createElement('div');
+        bar.dataset.v5enhanced = '1';
+        bar.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center;';
+        bar.innerHTML = `
+          <span style="color:var(--text-muted);font-size:0.75rem;">排序:</span>
+          <button data-sort="none" class="v5-sort-btn" style="padding:3px 10px;border-radius:10px;border:1px solid var(--gold);background:transparent;color:var(--gold);font-size:0.7rem;">默认</button>
+          <button data-sort="asc" class="v5-sort-btn" style="padding:3px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text-muted);font-size:0.7rem;">权重↑</button>
+          <button data-sort="desc" class="v5-sort-btn" style="padding:3px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text-muted);font-size:0.7rem;">权重↓</button>
+          <span style="margin-left:10px;color:var(--text-muted);font-size:0.75rem;">筛选:</span>
+          <button data-filter="disabled" class="v5-filter-btn" style="padding:3px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text-muted);font-size:0.7rem;">🚫 仅禁用</button>
+          <button data-filter="all" class="v5-filter-btn" style="padding:3px 10px;border-radius:10px;border:1px solid var(--gold);background:transparent;color:var(--gold);font-size:0.7rem;">全部</button>
+          <button data-filter="enabled" class="v5-filter-btn" style="padding:3px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text-muted);font-size:0.7rem;">✅ 仅启用</button>
+        `;
+        container.parentElement.insertBefore(bar, container);
+        bar.querySelectorAll('.v5-sort-btn').forEach(b => {
+          b.addEventListener('click', () => { v5SortDir = b.dataset.sort; renderCardList(); });
+        });
+        bar.querySelectorAll('.v5-filter-btn').forEach(b => {
+          b.addEventListener('click', () => { v5FilterDisabled = b.dataset.filter; renderCardList(); });
+        });
+
+        // 应用排序/筛选到 DOM
+        const cards = [...container.querySelectorAll('.card-item')];
+        let filteredCards = cards;
+        if (v5FilterDisabled === 'disabled') filteredCards = cards.filter(c => c.dataset.disabled === 'true');
+        else if (v5FilterDisabled === 'enabled') filteredCards = cards.filter(c => c.dataset.disabled !== 'true');
+        if (v5SortDir === 'asc') filteredCards.sort((a,b) => (parseFloat(a.dataset.weight||0) - parseFloat(b.dataset.weight||0)));
+        else if (v5SortDir === 'desc') filteredCards.sort((a,b) => (parseFloat(b.dataset.weight||0) - parseFloat(a.dataset.weight||0)));
+        filteredCards.forEach(c => container.appendChild(c));
+
+        // 更新按钮 active 态
+        bar.querySelectorAll('.v5-sort-btn').forEach(b => {
+          b.style.borderColor = b.dataset.sort === v5SortDir ? 'var(--gold)' : 'rgba(255,255,255,0.2)';
+          b.style.color = b.dataset.sort === v5SortDir ? 'var(--gold)' : 'var(--text-muted)';
+        });
+        bar.querySelectorAll('.v5-filter-btn').forEach(b => {
+          b.style.borderColor = b.dataset.filter === v5FilterDisabled ? 'var(--gold)' : 'rgba(255,255,255,0.2)';
+          b.style.color = b.dataset.filter === v5FilterDisabled ? 'var(--gold)' : 'var(--text-muted)';
+        });
+      } catch(e) { console.warn('[v5] cardlist ext error', e); }
+    };
+  }
+
+  // ======== A21b: selectCard 大预览 ========
+  const _origSelectCard = typeof selectCard === 'function' ? selectCard : null;
+  if (_origSelectCard) {
+    selectCard = function(id) {
+      _origSelectCard(id);
+      try {
+        const imgEl = document.querySelector('.admin-card-detail img, .detail-image, .card-detail img');
+        if (imgEl) {
+          imgEl.style.cssText = 'width:180px;height:300px;object-fit:cover;border-radius:10px;border:1px solid rgba(212,175,55,0.4);transition:transform .3s;cursor:zoom-in;';
+          if (!imgEl.dataset.v5enhanced) {
+            imgEl.dataset.v5enhanced = '1';
+            imgEl.addEventListener('mouseenter', () => imgEl.style.transform = 'scale(1.08)');
+            imgEl.addEventListener('mouseleave', () => imgEl.style.transform = 'scale(1)');
+          }
+        }
+      } catch(e) {}
+    };
+  }
+
+  // ======== A22b: saveToCloud 进度环 ========
+  const _origSave = typeof saveToCloud === 'function' ? saveToCloud : null;
+  if (_origSave) {
+    saveToCloud = async function() {
+      const btn = document.getElementById('save-btn') || document.getElementById('ov-save');
+      const origText = btn?.textContent;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:v5-spin 0.8s linear infinite;"></span> 保存中...';
+        if (!document.getElementById('v5-spin-keyframes')) {
+          const kf = document.createElement('style');
+          kf.id = 'v5-spin-keyframes';
+          kf.textContent = '@keyframes v5-spin { to { transform: rotate(360deg); } }';
+          document.head.appendChild(kf);
+        }
+      }
+      try {
+        const result = await _origSave();
+        if (btn) { btn.innerHTML = '✅ 保存成功'; btn.style.background = '#10b981'; setTimeout(() => { btn.textContent = origText; btn.style.background = ''; btn.disabled = false; }, 1500); }
+        return result;
+      } catch(e) {
+        if (btn) { btn.innerHTML = '❌ 保存失败'; btn.style.background = '#ef4444'; setTimeout(() => { btn.textContent = origText; btn.style.background = ''; btn.disabled = false; }, 2000); }
+        throw e;
+      }
+    };
+  }
+
+  // ======== A23b: 一键重置默认值 ========
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      // 在全局设置 Tab 注入重置按钮
+      const tabSettings = document.querySelector('.admin-tab[data-tab="settings"], .admin-tab[data-target*="setting"]');
+      const tabList = document.querySelector('.admin-tabs, .admin-tab-bar');
+      if (tabList && !document.getElementById('v5-reset-btn')) {
+        const resetBtn = document.createElement('button');
+        resetBtn.id = 'v5-reset-btn';
+        resetBtn.className = 'btn btn-secondary';
+        resetBtn.style.cssText = 'margin-left:auto;background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:#ef4444;';
+        resetBtn.textContent = '↩ 重置默认值';
+        resetBtn.addEventListener('click', () => {
+          if (!confirm('⚠ 确定要把所有卡牌权重/禁用/正位率重置为默认值吗？\n\n（不会删除卡牌本身，只重置数值）')) return;
+          try {
+            const freshDeck = window.TAROT_DECK || [];
+            const freshByID = {};
+            freshDeck.forEach(c => freshByID[c.id] = c);
+            if (window.AdminState?.config?.cards) {
+              window.AdminState.config.cards = window.AdminState.config.cards.map(card => {
+                const fresh = freshByID[card.id];
+                if (!fresh) return card;
+                return {
+                  ...card,
+                  weight: fresh.weight ?? card.weight,
+                  uprightRate: fresh.uprightRate ?? card.uprightRate,
+                  disabled: false,
+                  keywords: [...(fresh.keywords||[])],
+                };
+              });
+              window.AdminState.config.theme = { ...(freshByID.theme || { gold:'#d4af37', purple:'#9d4edd', teal:'#64d8cb' }) };
+            }
+            // 刷新 UI
+            if (typeof renderCardList === 'function') renderCardList();
+            if (typeof renderDashboard === 'function') renderDashboard();
+            toast('✨ 已重置为默认值！', 'success');
+            // 自动保存
+            if (typeof saveToCloud === 'function') saveToCloud().catch(()=>{});
+          } catch(e) { toast('❌ 重置失败: ' + e.message, 'error'); }
+        });
+        tabList.appendChild(resetBtn);
+      }
+
+      // A29b: 密码输入框眼睛
+      const pwdInput = document.querySelector('#login-password, input[type="password"]');
+      if (pwdInput && !document.getElementById('v5-pwd-eye')) {
+        pwdInput.parentElement.style.position = 'relative';
+        pwdInput.style.paddingRight = '36px';
+        const eye = document.createElement('button');
+        eye.id = 'v5-pwd-eye';
+        eye.type = 'button';
+        eye.innerHTML = '👁';
+        eye.style.cssText = 'position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px;';
+        eye.addEventListener('click', () => {
+          const isPwd = pwdInput.type === 'password';
+          pwdInput.type = isPwd ? 'text' : 'password';
+          eye.innerHTML = isPwd ? '🙈' : '👁';
+        });
+        pwdInput.parentElement.appendChild(eye);
+      }
+
+      // A28b: 概览 Tab 悬浮快速操作栏
+      if (!document.getElementById('v5-quick-bar')) {
+        const bar = document.createElement('div');
+        bar.id = 'v5-quick-bar';
+        bar.style.cssText = 'position:fixed;right:16px;bottom:24px;display:flex;flex-direction:column;gap:6px;z-index:100;';
+        bar.innerHTML = `
+          <button class="v5-quick" data-tab="cards" title="卡牌编辑" style="width:44px;height:44px;border-radius:50%;border:1px solid rgba(212,175,55,0.5);background:rgba(26,13,61,0.85);backdrop-filter:blur(6px);color:var(--gold);font-size:1rem;cursor:pointer;">🎴</button>
+          <button class="v5-quick" data-action="random" title="一键随机权重" style="width:44px;height:44px;border-radius:50%;border:1px solid rgba(157,78,221,0.5);background:rgba(26,13,61,0.85);backdrop-filter:blur(6px);color:#9d4edd;font-size:1rem;cursor:pointer;">🎲</button>
+          <button class="v5-quick" data-tab="dev" title="开发者工具" style="width:44px;height:44px;border-radius:50%;border:1px solid rgba(100,216,203,0.5);background:rgba(26,13,61,0.85);backdrop-filter:blur(6px);color:#64d8cb;font-size:1rem;cursor:pointer;">🛠</button>
+        `;
+        document.body.appendChild(bar);
+        bar.querySelectorAll('.v5-quick').forEach(b => {
+          b.addEventListener('click', () => {
+            const tab = b.dataset.tab;
+            if (tab) {
+              document.querySelector(`.admin-tab[data-tab="${tab}"]`)?.click();
+            } else if (b.dataset.action === 'random') {
+              if (!confirm('所有卡牌权重 → 0-3 随机？')) return;
+              if (window.AdminState?.config?.cards) {
+                window.AdminState.config.cards.forEach(c => { c.weight = Math.round(Math.random() * 3 * 100) / 100; });
+                if (typeof renderCardList === 'function') renderCardList();
+                toast('🎲 权重已随机！', 'success');
+              }
+            }
+          });
+        });
+      }
+
+      // A34b: Tab 徽章 (禁用 X 张 / 快照 N 个)
+      const badgeTabs = document.querySelectorAll('.admin-tab');
+      const cardsTab = [...badgeTabs].find(t => (t.dataset.tab === 'cards' || t.dataset.target?.includes('card')));
+      if (cardsTab && !cardsTab.querySelector('.v5-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'v5-badge';
+        badge.style.cssText = 'margin-left:6px;padding:1px 7px;border-radius:10px;background:rgba(239,68,68,0.2);color:#ef4444;font-size:0.65rem;display:inline-block;';
+        badge.textContent = '🚫 0';
+        cardsTab.appendChild(badge);
+      }
+      // 每 3 秒更新徽章
+      setInterval(() => {
+        if (window.AdminState?.config?.cards) {
+          const disabled = window.AdminState.config.cards.filter(c => c.disabled).length;
+          const tab = document.querySelector('.admin-tab .v5-badge');
+          if (tab) tab.textContent = `🚫 ${disabled}`;
+        }
+      }, 3000);
+
+    }, 800);
+  });
+
+  // ======== A31b: 主题预设实时预览 ========
+  const _origInjectThemes = typeof injectThemePresets === 'function' ? injectThemePresets : null;
+  if (_origInjectThemes) {
+    injectThemePresets = function() {
+      _origInjectThemes();
+      try {
+        const row = document.getElementById('theme-presets');
+        if (!row || row.dataset.v5preview === '1') return;
+        row.dataset.v5preview = '1';
+        const THEMES = [
+          { name:'星空', gold:'#d4af37', purple:'#9d4edd', teal:'#64d8cb' },
+          { name:'极光', gold:'#ffd93d', purple:'#06d6a0', teal:'#118ab2' },
+          { name:'暖金', gold:'#ff9f1c', purple:'#bc6c25', teal:'#2a9d8f' },
+          { name:'冷紫', gold:'#c9ada7', purple:'#5a189a', teal:'#9d4edd' },
+          { name:'薄荷', gold:'#e0aaff', purple:'#7b2cbf', teal:'#06d6a0' },
+        ];
+        // 在每个预设按钮旁加 mini 预览
+        const btns = row.querySelectorAll('button, .theme-preset-btn');
+        btns.forEach((btn, i) => {
+          if (i >= THEMES.length) return;
+          const theme = THEMES[i];
+          const preview = document.createElement('div');
+          preview.style.cssText = `position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:40px;height:60px;border-radius:4px;background:linear-gradient(135deg,${theme.gold},${theme.purple});border:1px solid ${theme.gold};pointer-events:none;opacity:0;transition:opacity .2s;z-index:10;`;
+          preview.innerHTML = `<div style="position:absolute;top:4px;left:4px;right:4px;height:4px;background:${theme.teal};border-radius:2px;"></div>`;
+          btn.style.position = 'relative';
+          btn.appendChild(preview);
+          btn.addEventListener('mouseenter', () => preview.style.opacity = '1');
+          btn.addEventListener('mouseleave', () => preview.style.opacity = '0');
+        });
+      } catch(e) {}
+    };
+  }
+
+  // ======== A33b + A36b + trialDraw 扩展：选牌阵 + 显示权重 ========
+  const _origTrialDraw = typeof trialDraw === 'function' ? trialDraw : null;
+  if (_origTrialDraw) {
+    trialDraw = function(n) {
+      // 调用原始 trialDraw
+      _origTrialDraw(n);
+      try {
+        // 给试抽输出卡片追加权重显示
+        setTimeout(() => {
+          document.querySelectorAll('.trial-card, .admin-trial-card').forEach(el => {
+            if (el.dataset.v5weighted) return;
+            const cardId = el.dataset.cardId;
+            if (!cardId || !window.AdminState?.config?.cards) return;
+            const card = window.AdminState.config.cards.find(c => c.id === cardId);
+            if (!card) return;
+            const weights = window.AdminState.config.cards.filter(c => !c.disabled).map(c => c.weight||1);
+            const totalW = weights.reduce((a,b)=>a+b,0) || 1;
+            const prob = ((card.weight||1) / totalW * 100).toFixed(1);
+            const info = document.createElement('div');
+            info.style.cssText = 'position:absolute;bottom:2px;left:2px;right:2px;font-size:0.6rem;color:var(--gold);background:rgba(0,0,0,0.6);border-radius:2px;padding:2px 4px;text-align:center;';
+            info.textContent = `权重 ${card.weight || 1} · 概率 ${prob}%`;
+            el.style.position = 'relative';
+            el.appendChild(info);
+            el.dataset.v5weighted = '1';
+          });
+        }, 100);
+      } catch(e) {}
+    };
+
+    // 给试抽按钮注入牌阵下拉
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const trialBtn = document.querySelector('[onclick*="trialDraw"], [data-action="trial"]');
+        if (trialBtn && !document.getElementById('v5-trial-select')) {
+          const select = document.createElement('select');
+          select.id = 'v5-trial-select';
+          select.style.cssText = 'margin-right:8px;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.08);color:var(--gold);border:1px solid rgba(212,175,55,0.4);font-size:0.8rem;';
+          select.innerHTML = `
+            <option value="1">🎴 单牌 (1)</option>
+            <option value="3" selected>🔱 三牌阵 (3)</option>
+            <option value="5">⭐ 五牌阵 (5)</option>
+            <option value="7">🌙 七牌阵 (7)</option>
+          `;
+          trialBtn.parentElement.insertBefore(select, trialBtn);
+          trialBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const n = parseInt(select.value);
+            trialDraw(n);
+          }, { once: true }); // 覆盖原有绑定后重新绑定
+        }
+      }, 1200);
+    });
+  }
+
+  // ======== A30b + A35b: 批量删除 + 撤销 5 步历史 ========
+  let v5SaveHistory = [];
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      // 在卡牌列表加 checkbox 和批量按钮
+      const listContainer = document.getElementById('card-list') || document.querySelector('.admin-card-list');
+      if (listContainer && !listContainer.dataset.v5batch) {
+        listContainer.dataset.v5batch = '1';
+        // 给每个 card-item 加 checkbox（事件委托）
+        listContainer.addEventListener('DOMNodeInserted', (e) => {
+          if (e.target.classList?.contains('card-item') && !e.target.querySelector('.v5-chk')) {
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.className = 'v5-chk';
+            chk.style.cssText = 'position:absolute;top:4px;left:4px;width:14px;height:14px;accent-color:#d4af37;cursor:pointer;';
+            chk.addEventListener('click', ev => ev.stopPropagation());
+            e.target.style.position = 'relative';
+            e.target.appendChild(chk);
+          }
+        });
+        // 批量操作按钮
+        const batchBar = document.createElement('div');
+        batchBar.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;';
+        batchBar.innerHTML = `
+          <button id="v5-batch-disable" class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem;background:rgba(239,68,68,0.15);border-color:#ef4444;color:#ef4444;">🚫 批量禁用</button>
+          <button id="v5-batch-enable" class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem;background:rgba(16,185,129,0.15);border-color:#10b981;color:#10b981;">✅ 批量启用</button>
+          <button id="v5-batch-none" class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem;">🔄 取消全选</button>
+          <button id="v5-undo" class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem;background:rgba(212,175,55,0.2);border-color:#d4af37;color:#d4af37;">↩ 撤销 (0)</button>
+        `;
+        listContainer.parentElement.insertBefore(batchBar, listContainer);
+        document.getElementById('v5-batch-disable').addEventListener('click', () => v5BatchToggle(true));
+        document.getElementById('v5-batch-enable').addEventListener('click', () => v5BatchToggle(false));
+        document.getElementById('v5-batch-none').addEventListener('click', () => listContainer.querySelectorAll('.v5-chk').forEach(c => c.checked = false));
+        document.getElementById('v5-undo').addEventListener('click', () => v5Undo());
+      }
+
+      // A32b: 禁用卡自定义原因 textarea
+      setTimeout(() => {
+        const disabledToggle = document.querySelector('.admin-card-detail input[type="checkbox"], [data-disabled-toggle]');
+        if (disabledToggle && !document.getElementById('v5-disable-reason')) {
+          const reasonBox = document.createElement('div');
+          reasonBox.id = 'v5-disable-reason';
+          reasonBox.style.cssText = 'margin-top:6px;';
+          reasonBox.innerHTML = `<textarea placeholder="禁用原因（可选）…" rows="2" style="width:100%;padding:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(212,175,55,0.3);border-radius:6px;color:var(--text-white);font-size:0.78rem;resize:vertical;box-sizing:border-box;"></textarea>`;
+          disabledToggle.parentElement.parentElement.appendChild(reasonBox);
+        }
+      }, 1500);
+    }, 800);
+  });
+
+  function v5BatchToggle(disabled) {
+    const ids = [...document.querySelectorAll('.v5-chk:checked')].map(c => c.closest('.card-item')?.dataset.id).filter(Boolean);
+    if (!ids.length) { toast('⚠ 请先勾选卡牌', ''); return; }
+    if (window.AdminState?.config?.cards) {
+      ids.forEach(id => {
+        const card = window.AdminState.config.cards.find(c => c.id === id);
+        if (card) card.disabled = disabled;
+      });
+      // 保存历史（A35b）
+      v5SaveHistory.push(JSON.stringify(window.AdminState.config));
+      if (v5SaveHistory.length > 5) v5SaveHistory.shift();
+      if (typeof renderCardList === 'function') renderCardList();
+      toast(`${disabled ? '🚫 已禁用' : '✅ 已启用'} ${ids.length} 张卡`, 'success');
+      // 更新撤销按钮计数
+      const undoBtn = document.getElementById('v5-undo');
+      if (undoBtn) undoBtn.textContent = `↩ 撤销 (${v5SaveHistory.length})`;
+    }
+  }
+
+  function v5Undo() {
+    if (!v5SaveHistory.length) { toast('⚠ 没有可撤销的操作', ''); return; }
+    const prev = v5SaveHistory.pop();
+    try {
+      window.AdminState.config = JSON.parse(prev);
+      if (typeof renderCardList === 'function') renderCardList();
+      toast('↩ 已撤销上一步', 'success');
+    } catch(e) { toast('❌ 撤销失败', 'error'); }
+    const undoBtn = document.getElementById('v5-undo');
+    if (undoBtn) undoBtn.textContent = `↩ 撤销 (${v5SaveHistory.length})`;
+  }
+
+  // A37b: CSV 导入自动修 webp
+  const _origImportJson = typeof importJson === 'function' ? importJson : null;
+  if (_origImportJson) {
+    importJson = function(e) {
+      // 预读文件内容，替换 .png → .webp
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          let text = reader.result;
+          text = text.replace(/images\/([^"'\s,}]+\.png)/g, (_, fn) => `images-webp/${fn.replace('.png','.webp')}`);
+          // 临时替换文件内容
+          const fakeFile = new File([text], file.name, { type: 'application/json' });
+          Object.defineProperty(e.target, 'files', { value: [fakeFile] });
+          _origImportJson(e);
+        };
+        reader.readAsText(file);
+        e.preventDefault();
+        return;
+      }
+      _origImportJson(e);
+    };
+  }
+
+  // ======== A35b: 保存时自动写入 5 步历史 ========
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      // monkey-patch 保存按钮的点击：先存快照再保存
+      const saveBtn = document.getElementById('save-btn') || document.getElementById('ov-save');
+      if (saveBtn) {
+        const origClick = saveBtn.onclick;
+        saveBtn.addEventListener('click', () => {
+          if (window.AdminState?.config) {
+            v5SaveHistory.push(JSON.stringify(window.AdminState.config));
+            if (v5SaveHistory.length > 5) v5SaveHistory.shift();
+            const undoBtn = document.getElementById('v5-undo');
+            if (undoBtn) undoBtn.textContent = `↩ 撤销 (${v5SaveHistory.length})`;
+          }
+        }, { capture: true });
+      }
+    }, 1500);
+  });
+
+})();
+/* ======== v5 Admin 结束 ======== */

@@ -8,6 +8,11 @@
   
   <title>cabbage塔罗 · 神秘抽牌</title>
   
+  <!-- U3: Cormorant Garamond serif italic 字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Noto+Serif+SC:wght@400&display=swap" rel="stylesheet">
+  
   <!-- 主样式 -->
   <link rel="stylesheet" href="css/style.css">
   
@@ -25,7 +30,11 @@
   <div class="container">
     
     <!-- ========== 1. 头部标题区 ========== -->
-    <header class="header">
+    <header class="header" style="position:relative;">
+      <!-- U30 Hero 区星尘飘浮装饰 -->
+      <span class="float-star">✦</span>
+      <span class="float-star">✧</span>
+      <span class="float-star">⋆</span>
       <h1>✦ cabbage塔罗 ✦</h1>
       <div class="subtitle">Mystical Tarot Reading</div>
       <div class="divider"></div>
@@ -165,12 +174,12 @@
         本网站仅供娱乐参考，人生的选择权永远在你手中
       </p>
       <div style="margin-top: 14px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-        <a href="library.html" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📚 牌意百科</a>
-        <a href="capsule.html" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">🕰️ 时间胶囊</a>
-        <a href="stats.html" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📊 我的塔罗</a>
+        <a href="library" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📚 牌意百科</a>
+        <a href="capsule" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">🕰️ 时间胶囊</a>
+        <a href="stats" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📊 我的塔罗</a>
       </div>
       <!-- 后台入口：极不显眼，hover 才显现 -->
-      <a href="admin.html" title="" aria-label="后台"
+      <a href="admin" title="" aria-label="后台"
          style="display:inline-block;margin-top:16px;opacity:0.15;transition:opacity .3s;font-size:0.75rem;color:var(--text-muted);text-decoration:none;"
          onmouseover="this.style.opacity='0.5'" onmouseout="this.style.opacity='0.15'"
          onfocus="this.style.opacity='0.5'" onblur="this.style.opacity='0.15'">⟡</a>

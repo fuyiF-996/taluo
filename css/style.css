@@ -1662,3 +1662,230 @@ body[data-theme="liquid"] .card-3d.flipped .card-front { animation: flipGlow 1.6
   transition: all .15s;
 }
 .mood-quick-tag:hover { background: rgba(212,175,55,0.2); border-style: solid; }
+
+/* ========================================================
+   ✨ v5 — 30 个纯 UI 变化（全部 CSS + 零 JS 逻辑）
+   风险红线：严禁在 .glass-card / .card-3d 本体加
+   filter / backdrop-filter / perspective() / isolation
+   ======================================================== */
+
+/* U1 标题渐变文字填充 */
+.header h1 {
+  background: linear-gradient(90deg, #d4af37 0%, #9d4edd 50%, #64d8cb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* U2 打字机光标 + U3 serif italic */
+.header .subtitle {
+  font-family: 'Cormorant Garamond', 'Noto Serif SC', serif !important;
+  font-style: italic;
+  font-weight: 400;
+}
+.header .subtitle::after {
+  content: '|';
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--gold);
+  animation: u5-blink 1s step-end infinite;
+}
+@keyframes u5-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* U4 星星加速 + 加大体积 */
+.star { animation-duration: 20s !important; width: 3px !important; height: 3px !important; }
+
+/* U5 每日卡随机旋转 + U6 金色虚线边框 */
+.daily-card {
+  border: 2px dashed rgba(212,175,55,0.5) !important;
+}
+.daily-card .dc-left img {
+  transform: rotate(-2deg);
+  transition: transform .3s;
+}
+.daily-card .dc-left img:hover {
+  transform: rotate(0deg) scale(1.03);
+}
+
+/* U7 开始按钮胶囊圆角 + U8 呼吸光晕 */
+#start-btn {
+  border-radius: 28px !important;
+  padding: 14px 36px !important;
+  font-size: 1.1rem !important;
+  animation: u5-glowPulse 2.8s ease-in-out infinite;
+}
+@keyframes u5-glowPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(212,175,55,0.3), 0 0 20px rgba(212,175,55,0.15); }
+  50% { box-shadow: 0 0 25px rgba(212,175,55,0.6), 0 0 50px rgba(157,78,221,0.3); }
+}
+
+/* U9 牌阵按钮统一高度 */
+.spread-btn { min-height: 64px; }
+
+/* U10 选中牌阵按钮金色发光 */
+.spread-btn.active {
+  border: 2px solid var(--gold) !important;
+  box-shadow: 0 0 20px rgba(212,175,55,0.5), inset 0 0 10px rgba(212,175,55,0.1);
+  background: rgba(212,175,55,0.15) !important;
+}
+
+/* U11 问题输入框 focus 金色发光 */
+#question-input:focus {
+  box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(212,175,55,0.3);
+  border-color: var(--gold) !important;
+}
+
+/* U12 洗牌瀑布下落动画（只给 .tarot-area.shuffling 状态的 .glass-card） */
+.tarot-area.shuffling .glass-card {
+  animation: u5-waterfall 1.2s ease-out forwards;
+}
+@keyframes u5-waterfall {
+  0% { transform: translateY(-80px) rotate(-8deg); opacity: 0; }
+  60% { transform: translateY(8px) rotate(2deg); opacity: 1; }
+  100% { transform: translateY(0) rotate(0); opacity: 1; }
+}
+
+/* U13 翻牌放慢 */
+.card-3d {
+  transition: transform 1.2s cubic-bezier(0.4, 0.1, 0.3, 1.2);
+}
+
+/* U14 卡牌正反圆角缩小 */
+.card-face { border-radius: 14px !important; }
+
+/* U15 液态玻璃呼吸 blur（⚠ 只加 ::before 伪元素，严禁本体！） */
+.theme-liquid .glass-card::before {
+  animation: u5-liquidBreathe 4s ease-in-out infinite;
+  opacity: 0.6;
+}
+@keyframes u5-liquidBreathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* U16 液态玻璃卡 hover 悬浮（只给非 .tarot-area 的卡） */
+.theme-liquid .glass-card:not(.tarot-area .glass-card):hover {
+  transform: translateY(-4px);
+  transition: transform .25s ease-out;
+}
+
+/* U17 液态玻璃 3D tilt 幅度加大（CSS 变量默认 ±6°，用 !important 覆盖到 ±12°） */
+.theme-liquid .glass-card { --tilt-max: 12deg !important; }
+
+/* U18 能量值条渐变填充 */
+.energy-bar-fill {
+  background: linear-gradient(90deg, #64d8cb, #d4af37) !important;
+}
+
+/* U19 分享按钮渐变边框 */
+#share-btn, .share-btn {
+  background: linear-gradient(transparent, transparent) padding-box,
+              linear-gradient(135deg, var(--gold), #9d4edd) border-box !important;
+  border: 2px solid transparent !important;
+  border-radius: 22px !important;
+}
+
+/* U20 历史抽屉滑入动画 */
+.history-drawer {
+  animation: u5-drawerSlide 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes u5-drawerSlide {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* U21 设置面板星点纹理 */
+.settings-panel {
+  background-image: radial-gradient(rgba(212,175,55,0.15) 1px, transparent 1px) !important;
+  background-size: 12px 12px !important;
+}
+
+/* U22 slider 轨道加粗 */
+input[type="range"] {
+  height: 8px !important;
+  border-radius: 4px !important;
+}
+input[type="range"]::-webkit-slider-thumb {
+  margin-top: -4px;
+}
+
+/* U23 成就 toast 发光胶囊 */
+.toast.show {
+  box-shadow: 0 0 20px rgba(212,175,55,0.5), 0 0 40px rgba(157,78,221,0.3);
+  border-radius: 24px !important;
+}
+
+/* U24 日历网格金色边框 */
+.cal-cell {
+  border: 1px solid rgba(212,175,55,0.4) !important;
+}
+
+/* U25 Admin 登录页塔罗光晕 */
+#login-page::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 600px; height: 600px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* U26 Admin Tab 淡入 */
+.admin-tab-content {
+  animation: u5-fadeTab 0.25s ease-out;
+}
+@keyframes u5-fadeTab {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* U27 Admin 卡牌缩略图金色边框 */
+.card-item img, .admin-card-thumb img {
+  border: 1px solid rgba(212,175,55,0.3) !important;
+  border-radius: 6px !important;
+}
+
+/* U28 全站滚动条美化 */
+::-webkit-scrollbar { width: 6px; height: 6px; background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--gold), var(--purple-primary, #9d4edd));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+
+/* U29 liquid 翻牌后彩虹边（⚠ 用 box-shadow 不是 outline，安全不破坏 preserve-3d） */
+.theme-liquid .card-3d.flipped {
+  box-shadow: 0 0 0 2px transparent, 0 0 16px rgba(212,175,55,0.4);
+  animation: u5-rainbowGlow 3s linear infinite;
+}
+@keyframes u5-rainbowGlow {
+  0% { box-shadow: 0 0 0 2px rgba(212,175,55,0.6), 0 0 20px rgba(212,175,55,0.5); }
+  33% { box-shadow: 0 0 0 2px rgba(157,78,221,0.6), 0 0 20px rgba(157,78,221,0.5); }
+  66% { box-shadow: 0 0 0 2px rgba(100,216,203,0.6), 0 0 20px rgba(100,216,203,0.5); }
+  100% { box-shadow: 0 0 0 2px rgba(212,175,55,0.6), 0 0 20px rgba(212,175,55,0.5); }
+}
+
+/* U30 Hero 区星尘飘浮 */
+.float-star {
+  position: absolute;
+  pointer-events: none;
+  font-size: 1.4rem;
+  color: var(--gold);
+  opacity: 0.5;
+  animation: u5-floatStar 8s ease-in-out infinite;
+}
+.float-star:nth-child(1) { top: 20%; left: 8%; animation-delay: 0s; }
+.float-star:nth-child(2) { top: 60%; right: 10%; animation-delay: 2.5s; animation-duration: 10s; }
+.float-star:nth-child(3) { top: 80%; left: 25%; animation-delay: 5s; animation-duration: 12s; }
+@keyframes u5-floatStar {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+  50% { transform: translateY(-20px) rotate(180deg); opacity: 0.7; }
+}
+
+/* 完成 UI 变化，共 30 项 */

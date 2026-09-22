@@ -83,7 +83,7 @@
     </div>
 
     <footer style="text-align:center;padding:20px 0;color:var(--text-muted);font-size:0.8rem;">
-      <a href="index.html" style="color:var(--gold);text-decoration:none;">← 返回占卜首页</a>
+      <a href="index" style="color:var(--gold);text-decoration:none;">← 返回占卜首页</a>
     </footer>
   </div>
 
@@ -124,7 +124,7 @@
       else tcEl.innerHTML = topCards.map(([id, cnt]) => {
         const card = window.TAROT_DECK?.find(c => c.id === id);
         const url = card?.imageUrl || `images-webp/${id}.webp`;
-        return `<a href="library.html?card=${id}" class="top-card" style="text-decoration:none;color:inherit;"><img src="${url}" loading="lazy"><div class="info"><div class="name">${card?.name || id}</div></div><span class="count">×${cnt}</span></a>`;
+        return `<a href="library?card=${id}" class="top-card" style="text-decoration:none;color:inherit;"><img src="${url}" loading="lazy"><div class="info"><div class="name">${card?.name || id}</div></div><span class="count">×${cnt}</span></a>`;
       }).join("");
 
       // 30 天活跃度（简易网格）
