@@ -93,6 +93,17 @@ const spreadNameMap = {
 };
 
 
+/* ==================== 会话内的呼吸引导标记 ==================== */
+// 只在本标签页的第一次占卜时播放呼吸引导，避免每次都强制等待
+const BREATH_SESSION_KEY = "tarot_breath_done";
+function breathDoneThisSession() {
+  try { return sessionStorage.getItem(BREATH_SESSION_KEY) === "1"; } catch { return false; }
+}
+function markBreathDone() {
+  try { sessionStorage.setItem(BREATH_SESSION_KEY, "1"); } catch {}
+}
+
+
 /* ==================== 初始化 ==================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -363,9 +374,12 @@ async function startDivination() {
     console.log('[塔罗] 用户未输入问题，使用通用占卜');
   }
 
-  // ✨ C26 呼吸引导（每次占卜前 3 秒）
-  if (window.TarotExtrasV4) {
-    await window.TarotExtrasV4.breathingGuide(6);
+  // ✨ C26 呼吸引导
+  // ⚠ 体感修复：原来每次占卜都强制等 6 秒（点完之后界面一动不动），
+  // 很容易被当成「卡住了」。现在只在本次会话的第一次占卜时出现，并缩短到 3 秒。
+  if (window.TarotExtrasV4 && !breathDoneThisSession()) {
+    markBreathDone();
+    await window.TarotExtrasV4.breathingGuide(3);
   }
   // ✨ C34 星尘召唤粒子效果
   if (window.TarotExtrasV4) {
@@ -411,10 +425,13 @@ async function startDivination() {
   AppState.phase = 'revealing';
   dom.statusMessage.textContent = '翻开卡牌，聆听宇宙的讯息...';
   
-  // 依次翻转每张牌（间隔 0.6s）
+  // 依次翻转每张牌
+  // ⚠ 体感修复：原来固定 0.6s/张，年运 14 张要等 8.4 秒。现在牌多时自动压缩，
+  // 总翻转时长最多约 4 秒；牌少时保持原来的仪式感。
   const cardElements = $$('.card-3d');
+  const flipInterval = Math.max(220, Math.min(600, 4000 / Math.max(1, cardElements.length)));
   for (let i = 0; i < cardElements.length; i++) {
-    await sleep(600);
+    await sleep(flipInterval);
     cardElements[i].classList.add('flipped');
     // v2：翻牌音效
     if (window.TarotFeedback && typeof window.TarotFeedback.playFlip === 'function') {
@@ -483,7 +500,7 @@ function renderCardBacks(cards) {
         <img 
           src="${card.imageUrl}" 
           alt="${card.name}" 
-          loading="lazy"
+          decoding="async"
           onerror="this.style.display='none'" />
         <div class="card-name-cn">${card.name}</div>
         <div class="card-name-en">${card.nameEn}</div>

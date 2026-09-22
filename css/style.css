@@ -64,15 +64,13 @@ body {
   color: var(--text-white);
   line-height: 1.6;
   
-  /* 深色星空背景 - 多层渐变叠加 */
-  background: 
-    radial-gradient(ellipse at 20% 20%, rgba(157, 78, 221, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
-    radial-gradient(ellipse at 50% 80%, rgba(100, 50, 150, 0.2) 0%, transparent 50%),
-    linear-gradient(135deg, var(--bg-deep) 0%, var(--bg-mid) 50%, #0f0829 100%);
-  
-  /* 固定背景，不随滚动移动 */
-  background-attachment: fixed;
+  /* ⚠ 性能：原来这里是「多层渐变 + background-attachment: fixed」。
+     background-attachment: fixed 在移动端 Chrome 上会让整页在滚动时逐帧重绘
+     （拿不到合成器快速滚动路径）；再叠上 6 张卡的 backdrop-filter，
+     表现就是「一滚动就卡死」。
+     渐变底图已挪到下面 position: fixed 的 body::before（视觉完全一样，
+     但固定层滚动时不需要重绘）。这里只留一个纯色兜底。 */
+  background: var(--bg-deep);
   position: relative;
 }
 
@@ -103,7 +101,12 @@ body::before {
     radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,0.7), transparent),
     radial-gradient(1px 1px at 75% 15%, white, transparent),
     radial-gradient(1px 1px at 95% 40%, rgba(157,78,221,0.5), transparent),
-    radial-gradient(1.5px 1.5px at 30% 95%, white, transparent);
+    radial-gradient(1.5px 1.5px at 30% 95%, white, transparent),
+    /* ↓↓↓ 原来挂在 body 上的渐变底图，现在挂在这个固定层里（滚动不重绘）↓↓↓ */
+    radial-gradient(ellipse at 20% 20%, rgba(157, 78, 221, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 80%, rgba(100, 50, 150, 0.2) 0%, transparent 50%),
+    linear-gradient(135deg, var(--bg-deep) 0%, var(--bg-mid) 50%, #0f0829 100%);
   
   /* ⚠ 性能：这里曾经是 animation: twinkle（全屏固定层的 opacity 无限动画）。
      每一帧星星层透明度都在变 → 所有 .glass-card 的 backdrop-filter 每帧都要
@@ -846,7 +849,8 @@ body[data-theme="liquid"]::before {
     radial-gradient(ellipse 40% 35% at 12% 82%,
       rgba(231, 93, 135, 0.15), transparent 55%),
     linear-gradient(180deg, #06050d 0%, #0a0818 40%, #06050d 100%);
-  background-attachment: fixed;
+  /* 这里不再需要 background-attachment: fixed —— 它本身就是 position: fixed 层，
+     加了反而会在移动端触发逐帧重绘 */
 }
 
 /* ---------- 液态玻璃卡片 —— 核心实现 ----------
@@ -1569,10 +1573,13 @@ body[data-theme="liquid"] ::-webkit-scrollbar-track {
   100% { transform: scale(0.6); opacity: 0; }
 }
 
-/* C21 Hero 渐入动画 */
+/* C21 Hero 渐入动画
+ * ⚠ 性能：原来还动画了 filter: blur(8px) —— 文本模糊滤镜每帧都要重新光栅化，
+ * 而且标题还带 background-clip:text + 40px 文字阴影，首屏那 1.4 秒非常吃 CPU。
+ * 现在只动 transform / opacity（走合成器）。 */
 @keyframes heroFadeIn {
-  from { opacity: 0; transform: translateY(24px); filter: blur(8px); }
-  to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .header h1 { animation: heroFadeIn 1.2s ease-out; }
 .header .subtitle { animation: heroFadeIn 1.4s ease-out 0.15s both; }
@@ -1988,4 +1995,33 @@ body.star-twinkle::after  { animation: twinkle 6s ease-in-out infinite alternate
   body[data-theme="liquid"] .glass-card::after {
     animation: none !important;
   }
+}
+
+/* ========================================================
+   ✨ 移动端 / 触屏设备：直接走轻量视觉
+   原因：手机上「6 张大卡 backdrop-filter: blur(12px)」是滚动掉帧的主因
+   —— 毛玻璃在滚动时每帧都要重新对背景取样。这里换成半透明底色 + 边框光，
+   观感接近，但滚动成本几乎为零；桌面端仍保留完整液态玻璃。
+   ======================================================== */
+@media (max-width: 900px), (pointer: coarse) {
+  .glass-card,
+  .glass-card::before,
+  .settings-fab,
+  .settings-panel,
+  .theme-fab,
+  .history-drawer,
+  .toast,
+  .lib-card,
+  .lib-modal-card,
+  .capsule-item,
+  textarea,
+  input,
+  select {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* 没有模糊后把底色稍微加亮，保持文字对比度和「玻璃」观感 */
+  .glass-card { background: rgba(255, 255, 255, 0.09); }
+  /* 液态玻璃主题在手机上同样不跑扫描光泽动画 */
+  body[data-theme="liquid"] .glass-card:hover::after { animation: none; }
 }

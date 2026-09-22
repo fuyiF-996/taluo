@@ -23,10 +23,13 @@
   'use strict';
 
   var HTML = document.documentElement;
-  var IDLE_FRAMES = 70;        // 静止采样帧数（约 1.2s）
-  var SCROLL_FRAMES = 40;      // 滚动采样帧数
-  var SLOW_FRAME_MS = 40;      // 中位帧间隔阈值 = 低于 25fps
-  var CHECK_DELAY_MS = 1200;   // 等首屏稳定后再测
+  var SAMPLE_MS = 1200;        // 静止采样时长（按时间采样，卡机也能尽快判定）
+  var SCROLL_SAMPLE_MS = 900;  // 滚动采样时长
+  var MIN_FRAMES = 6;          // 样本太少（标签页被节流）就不下结论
+  var SLOW_FRAME_MS = 34;      // 中位帧间隔阈值 ≈ 低于 30fps
+  var JANK_FRAME_MS = 50;      // 单帧超过它就算一次卡顿
+  var JANK_RATIO = 0.2;        // 卡顿帧占比超过它 → 判定为「卡」
+  var CHECK_DELAYS = [1200, 5000]; // 首屏后测两次（第二次能覆盖图片/字体加载完）
   var MAX_SCROLL_CHECKS = 3;   // 最多检查 3 次滚动，避免长期占用
 
   var scrollChecks = 0;
@@ -50,23 +53,51 @@
     ? window.requestAnimationFrame.bind(window)
     : function (cb) { return setTimeout(function () { cb(Date.now()); }, 16); };
 
-  /** 采样 n 帧，回调中位帧间隔（ms） */
-  function sampleFrames(n, done) {
+  /**
+   * 按「时长」采样帧间隔（不是按帧数）。
+   * 关键：按帧数采样时，卡机要攒够 70 帧得等好几秒，用户先卡了半天才降级；
+   * 按时间采样，慢设备 1.2 秒只出 15~20 帧，也足够判定并立刻降级。
+   * 同时统计长帧占比 —— 只看平均帧率会漏掉「40fps 但每隔几帧掉一次 80ms」。
+   */
+  function sampleFrames(maxMs, done) {
     var frames = [];
-    var last = 0;
+    var last = 0, t0 = 0, finished = false;
+
+    function finish() {
+      if (finished) return;
+      finished = true;
+      var med = median(frames);
+      var janky = 0;
+      for (var i = 0; i < frames.length; i++) if (frames[i] > JANK_FRAME_MS) janky++;
+      done(med, frames.length ? janky / frames.length : 0, frames.length);
+    }
+
     function step(now) {
+      if (!t0) t0 = now;
       if (last) frames.push(now - last);
       last = now;
-      if (frames.length < n) { raf(step); return; }
-      done(median(frames));
+      if (now - t0 < maxMs || frames.length < MIN_FRAMES) { raf(step); return; }
+      finish();
     }
     raf(step);
   }
 
+  function judge(med, jankRatio, tag) {
+    if (med > SLOW_FRAME_MS) {
+      degrade(tag + '中位帧间隔 ' + med.toFixed(1) + 'ms');
+      return true;
+    }
+    if (jankRatio > JANK_RATIO) {
+      degrade(tag + (jankRatio * 100).toFixed(0) + '% 的帧超过 ' + JANK_FRAME_MS + 'ms');
+      return true;
+    }
+    return false;
+  }
+
   function checkIdle() {
     if (document.visibilityState !== 'visible' || isLite()) return;
-    sampleFrames(IDLE_FRAMES, function (med) {
-      if (med > SLOW_FRAME_MS) degrade('静止中位帧间隔 ' + med.toFixed(1) + 'ms');
+    sampleFrames(SAMPLE_MS, function (med, jankRatio) {
+      judge(med, jankRatio, '静止');
     });
   }
 
@@ -74,23 +105,128 @@
     if (scrollSampling || isLite() || scrollChecks >= MAX_SCROLL_CHECKS) return;
     scrollSampling = true;
     scrollChecks++;
-    sampleFrames(SCROLL_FRAMES, function (med) {
+    sampleFrames(SCROLL_SAMPLE_MS, function (med, jankRatio) {
       scrollSampling = false;
-      if (med > SLOW_FRAME_MS) degrade('滚动中位帧间隔 ' + med.toFixed(1) + 'ms');
+      judge(med, jankRatio, '滚动');
     });
   }
 
+  var started = false;
+
   function start() {
-    setTimeout(function () {
-      try { checkIdle(); } catch (e) {}
-    }, CHECK_DELAY_MS);
+    if (started) return;
+    started = true;
+    CHECK_DELAYS.forEach(function (delay) {
+      setTimeout(function () {
+        try { checkIdle(); } catch (e) {}
+      }, delay);
+    });
     try {
       window.addEventListener('scroll', onScroll, { passive: true });
     } catch (e) {}
   }
 
-  if (document.readyState === 'complete') start();
-  else window.addEventListener('load', start, { once: true });
+  if (document.readyState === 'complete') {
+    start();
+  } else {
+    window.addEventListener('load', start, { once: true });
+    // 兜底：万一有外部请求把 load 事件拖住（例如字体/第三方统计），
+    // 1.5 秒后照样开始测量，不能让看门狗跟着一起卡住。
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(start, 1500);
+    }, { once: true });
+  }
+
+  /* ========================================================================
+   * 诊断面板（排障用，不影响正常访问）
+   * 打开方式：网址后面加 ?perf=1
+   *   https://taluo996.top/?perf=1
+   * 会显示这个设备上的真实数据：首屏时间、资源体积、实时帧率、是否已降级。
+   * 把这一屏截图/拍照发出来，就能精确定位「卡在哪」。
+   * ====================================================================== */
+  function mountDiagnostic() {
+    if (!/(^|[?&])perf=1(&|$)/.test(window.location.search)) return;
+
+    var box = document.createElement('div');
+    box.id = 'tarot-perf-panel';
+    box.style.cssText = [
+      'position:fixed', 'left:6px', 'bottom:6px', 'z-index:2147483647',
+      'max-width:94vw', 'max-height:70vh', 'overflow:auto',
+      'background:rgba(0,0,0,0.86)', 'color:#7ef7c8',
+      'font:12px/1.55 ui-monospace,Consolas,monospace',
+      'padding:10px 12px', 'border:1px solid rgba(100,216,203,0.5)',
+      'border-radius:8px', 'white-space:pre-wrap', 'word-break:break-all',
+      'pointer-events:auto',
+    ].join(';');
+    box.textContent = '塔罗性能诊断加载中…';
+    document.body.appendChild(box);
+
+    var lcp = 0;
+    try {
+      new PerformanceObserver(function (l) {
+        var es = l.getEntries();
+        lcp = es[es.length - 1].startTime;
+      }).observe({ entryTypes: ['largest-contentful-paint'] });
+    } catch (e) {}
+
+    function nav() { return performance.getEntriesByType('navigation')[0] || {}; }
+    function fcp() {
+      var ps = performance.getEntriesByType('paint');
+      for (var i = 0; i < ps.length; i++) if (ps[i].name === 'first-contentful-paint') return ps[i].startTime;
+      return 0;
+    }
+    function resources() {
+      var rs = performance.getEntriesByType('resource');
+      var bytes = 0, slowest = null;
+      for (var i = 0; i < rs.length; i++) {
+        bytes += rs[i].transferSize || 0;
+        if (!slowest || rs[i].duration > slowest.duration) slowest = rs[i];
+      }
+      return { count: rs.length, kb: Math.round(bytes / 1024), slowest: slowest };
+    }
+
+    function render(fps) {
+      var n = nav(), r = resources(), s = '';
+      s += '时间 ' + new Date().toLocaleTimeString() + '   轻量模式: ' + (isLite() ? '已开启 ✓' : '未开启') + '\n';
+      s += '设备: ' + (navigator.userAgent || '?').slice(0, 90) + '\n';
+      s += '屏幕: ' + screen.width + 'x' + screen.height + '  DPR=' + (window.devicePixelRatio || 1) +
+           '  核心=' + (navigator.hardwareConcurrency || '?') + '  内存=' + (navigator.deviceMemory || '?') + '\n';
+      s += '—— 加载 ——\n';
+      s += 'FCP 首次绘制 : ' + Math.round(fcp()) + ' ms\n';
+      s += 'LCP 最大元素 : ' + Math.round(lcp) + ' ms\n';
+      s += 'TTFB 首字节  : ' + Math.round(n.responseStart || 0) + ' ms\n';
+      s += 'DOMContentLoaded: ' + Math.round(n.domContentLoadedEventEnd || 0) + ' ms\n';
+      s += 'load 事件    : ' + Math.round(n.loadEventEnd || 0) + ' ms（0 = 被外部请求拖住还没触发）\n';
+      s += '—— 资源 ——\n';
+      s += '请求数 ' + r.count + ' 个，传输 ' + r.kb + ' KB\n';
+      if (r.slowest) s += '最慢: ' + r.slowest.name.split('/').pop() + ' ' + Math.round(r.slowest.duration) + ' ms\n';
+      s += '—— 渲染 ——\n';
+      s += '实时帧率: ' + (fps ? fps.toFixed(0) + ' fps' : '测量中…') + '\n';
+      s += 'ServiceWorker: ' + (navigator.serviceWorker && navigator.serviceWorker.controller ? '已接管（可能仍用旧缓存）' : '未接管') + '\n';
+      s += '提示: 卡顿时看「实时帧率」，低于 30 就是真的掉帧\n';
+      s += '可执行 TarotPerf.restore() / TarotPerf.degrade("手动") 对比';
+      box.textContent = s;
+    }
+
+    render(0);
+    setInterval(function () {
+      // 每秒测一次实时帧率
+      var frames = 0, t0 = performance.now();
+      (function tick() {
+        frames++;
+        if (performance.now() - t0 < 1000) raf(tick);
+        else render(frames * 1000 / (performance.now() - t0));
+      })();
+    }, 1000);
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    try { mountDiagnostic(); } catch (e) {}
+  } else {
+    document.addEventListener('DOMContentLoaded', function () {
+      try { mountDiagnostic(); } catch (e) {}
+    }, { once: true });
+  }
 
   // 调试 / 手动切换
   window.TarotPerf = {

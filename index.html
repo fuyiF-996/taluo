@@ -25,19 +25,24 @@
   </script>
 
   <!-- U3: Cormorant Garamond serif italic 字体
-       ⚠ 性能红线：这里绝对不能用阻塞渲染的 <link rel="stylesheet">。
-       fonts.googleapis.com 在部分网络环境（如国内）不可达，请求会一直挂起，
-       浏览器要等到超时才绘制第一帧 —— 表现就是「白屏很久 / 像卡死」。
-       改用异步加载：media="print" 不阻塞渲染，加载成功后再切回 all；
-       字体拿不到也完全不影响页面，CSS 里已备好系统衬线字体兜底。
-       同时去掉 preconnect：连不通的域名没必要提前占连接。 -->
-  <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Noto+Serif+SC:wght@400&display=swap"
-        media="print" onload="this.media='all';this.onload=null">
-  <noscript>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Noto+Serif+SC:wght@400&display=swap">
-  </noscript>
+       ⚠ 性能红线：字体绝对不能出现在 <head> 的 <link rel="stylesheet"> 里。
+       1) 普通 link 会阻塞首屏渲染；2) 就算是 media="print" 的「异步」写法，
+          样式表依然会把 load 事件拖住 —— 国内连不通 fonts.googleapis.com 时，
+          标签页会一直转圈、window.onload 迟迟不触发，用户看到的就是「打不开」。
+       所以改成：页面 load 之后再动态注入。既不阻塞渲染，也不拖住 load，
+       load 之后请求挂住也无所谓。字体拿不到就用系统衬线字体（CSS 已兜底）。 -->
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        try {
+          var l = document.createElement('link');
+          l.rel = 'stylesheet';
+          l.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Noto+Serif+SC:wght@400&display=swap';
+          document.head.appendChild(l);
+        } catch (e) {}
+      }, 0);
+    }, { once: true });
+  </script>
   
   <!-- 主样式 -->
   <link rel="stylesheet" href="css/style.css">
