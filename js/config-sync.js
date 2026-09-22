@@ -181,15 +181,22 @@ function drawCardsByConfig(count) {
 
 /* ==================== WebP 硬指向 ==================== */
 /**
- * 强制所有卡牌指向 images-webp/xxx.webp（images/ PNG 原图已删除，省 17MB）
- * 2026 年所有现代浏览器都支持 WebP（Chrome 32+/Firefox 65+/Safari 14+）
+ * 强制所有卡牌指向 images-webp/xxx.webp
+ * 关键：用 tarot-data.js 里已有的原始 imageUrl 推导文件名
+ * tarot-data.js 原始: images/00-TheFool.png → 转成 images-webp/00-TheFool.webp
+ * 不能用 id 推导！id 是 M0，但文件名是 00-TheFool —— 完全不匹配！
  */
 (function forceWebP() {
   let converted = 0;
   TAROT_DECK.forEach(c => {
-    // 任何不是 images-webp/xxx.webp 的路径，都改成 WebP
-    if (!c.imageUrl || !c.imageUrl.includes("images-webp/") || !c.imageUrl.endsWith(".webp")) {
-      // 从 id 推导：M00 → images-webp/M00.webp
+    if (c.imageUrl && c.imageUrl.includes("images/")) {
+      // images/xxx.png → images-webp/xxx.webp
+      c.imageUrl = c.imageUrl
+        .replace(/^images\//, "images-webp/")
+        .replace(/\.png$/, ".webp");
+      converted++;
+    } else if (!c.imageUrl || !c.imageUrl.endsWith(".webp")) {
+      // 兜底：从 name + id 推导（这种情况不应该发生）
       c.imageUrl = "images-webp/" + c.id + ".webp";
       converted++;
     }

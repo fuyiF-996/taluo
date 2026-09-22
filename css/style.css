@@ -628,6 +628,45 @@ body::after {
 }
 
 
+/* ==================== ✨ C3: 月运/年运牌阵 ==================== */
+/* 月运：6 张卡，3 列 2 行 */
+.cards-display.monthly-spread {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 640px;
+  margin: 20px auto;
+}
+.cards-display.monthly-spread .card-3d {
+  width: 160px;
+  height: 260px;
+  margin: 0 auto;
+}
+
+/* 年运：14 张卡，建议 7 列 × 2 行（桌面） */
+.cards-display.yearly-spread {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  max-width: 900px;
+  margin: 20px auto;
+}
+.cards-display.yearly-spread .card-3d {
+  width: 100px;
+  height: 160px;
+  margin: 0 auto;
+}
+.cards-display.yearly-spread .card-face {
+  border-radius: 6px;
+}
+.cards-display.yearly-spread .card-name-cn {
+  font-size: 0.7rem;
+}
+.cards-display.yearly-spread .card-name-en {
+  font-size: 0.55rem;
+}
+
+
 /* ==================== 响应式 - 移动端适配 ==================== */
 @media (max-width: 768px) {
   
