@@ -93,17 +93,6 @@ const spreadNameMap = {
 };
 
 
-/* ==================== 会话内的呼吸引导标记 ==================== */
-// 只在本标签页的第一次占卜时播放呼吸引导，避免每次都强制等待
-const BREATH_SESSION_KEY = "tarot_breath_done";
-function breathDoneThisSession() {
-  try { return sessionStorage.getItem(BREATH_SESSION_KEY) === "1"; } catch { return false; }
-}
-function markBreathDone() {
-  try { sessionStorage.setItem(BREATH_SESSION_KEY, "1"); } catch {}
-}
-
-
 /* ==================== 初始化 ==================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -112,20 +101,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function init() {
   bindEvents();
-  // 先完成本地首屏初始化，云端配置在后台加载，避免网络异常卡住页面。
+  // 从云端拉配置（失败自动降级，不阻塞页面）
+  if (window.loadCloudConfig) {
+    await window.loadCloudConfig();
+  }
+  // v2：根据云端 enabledSpreads 禁用/隐藏牌阵按钮
   applySpreadButtons();
+
+  // ✨ C1: 每日一张卡
   renderDailyCard();
 
   // ✨ C8: PWA Service Worker 注册
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
-
-  // 云端配置只负责增强本地默认值，不应阻塞首屏交互。
-  if (window.loadCloudConfig) {
-    window.loadCloudConfig().then(() => {
-      applySpreadButtons();
-    }).catch(() => {});
   }
 
   // ✨ v3 新功能按钮绑定
@@ -240,14 +228,7 @@ function renderDailyCard() {
   const idx = Math.abs(hash) % TAROT_DECK.length;
   const card = TAROT_DECK[idx];
 
-  const dateEl = document.getElementById('daily-date');
-  if (dateEl) {
-    dateEl.dataset.lunar = '';   // 允许重新追加农历（避免 defer 时序下被覆盖）
-    dateEl.textContent = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
-    // index.html 的脚本都改成了 defer，extras-v4 可能在本次赋值前就跑过，
-    // 这里主动补一次农历，保证日期始终带农历且只出现一次。
-    window.TarotExtrasV4?.appendLunarToDailyDate?.();
-  }
+  document.getElementById('daily-date').textContent = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
   document.getElementById('daily-name').textContent = `${card.name} · ${card.nameEn}`;
   document.getElementById('daily-advice').textContent = card.advice || card.upright?.slice(0, 40) + '...' || '静心冥想，让今日指引为你指明方向。';
   const img = document.getElementById('daily-img');
@@ -360,32 +341,12 @@ async function startDivination() {
   // 防止重复点击
   if (AppState.phase !== 'idle' && AppState.phase !== 'done') return;
   
-  // ✨ C42 敏感词软屏蔽
-  let rawQuestion = dom.questionInput.value.trim();
-  AppState.question = rawQuestion;
-  if (rawQuestion && window.TarotExtrasV4) {
-    const sanitized = window.TarotExtrasV4.sanitizeQuestion(rawQuestion);
-    if (sanitized !== rawQuestion) {
-      AppState.question = sanitized;
-      toast('🛡 问题已自动净化处理');
-    }
-  }
+  // 记录问题
+  AppState.question = dom.questionInput.value.trim();
   if (!AppState.question) {
     console.log('[塔罗] 用户未输入问题，使用通用占卜');
   }
-
-  // ✨ C26 呼吸引导
-  // ⚠ 体感修复：原来每次占卜都强制等 6 秒（点完之后界面一动不动），
-  // 很容易被当成「卡住了」。现在只在本次会话的第一次占卜时出现，并缩短到 3 秒。
-  if (window.TarotExtrasV4 && !breathDoneThisSession()) {
-    markBreathDone();
-    await window.TarotExtrasV4.breathingGuide(3);
-  }
-  // ✨ C34 星尘召唤粒子效果
-  if (window.TarotExtrasV4) {
-    window.TarotExtrasV4.stardustSummon();
-  }
-
+  
   // 重置之前的结果
   clearPreviousResult();
   
@@ -425,13 +386,10 @@ async function startDivination() {
   AppState.phase = 'revealing';
   dom.statusMessage.textContent = '翻开卡牌，聆听宇宙的讯息...';
   
-  // 依次翻转每张牌
-  // ⚠ 体感修复：原来固定 0.6s/张，年运 14 张要等 8.4 秒。现在牌多时自动压缩，
-  // 总翻转时长最多约 4 秒；牌少时保持原来的仪式感。
+  // 依次翻转每张牌（间隔 0.6s）
   const cardElements = $$('.card-3d');
-  const flipInterval = Math.max(220, Math.min(600, 4000 / Math.max(1, cardElements.length)));
   for (let i = 0; i < cardElements.length; i++) {
-    await sleep(flipInterval);
+    await sleep(600);
     cardElements[i].classList.add('flipped');
     // v2：翻牌音效
     if (window.TarotFeedback && typeof window.TarotFeedback.playFlip === 'function') {
@@ -500,7 +458,7 @@ function renderCardBacks(cards) {
         <img 
           src="${card.imageUrl}" 
           alt="${card.name}" 
-          decoding="async"
+          loading="lazy"
           onerror="this.style.display='none'" />
         <div class="card-name-cn">${card.name}</div>
         <div class="card-name-en">${card.nameEn}</div>
@@ -594,16 +552,6 @@ function renderReadingResult() {
           <span class="orientation-tag ${orientationClass}">${orientationLabel}</span>
         </div>
         <div class="meaning">${meaning}</div>
-        ${window.TarotExtrasV4 ? (() => {
-          const e = window.TarotExtrasV4.getCardEnergy({...card, orientation});
-          const color = orientation ? '#64d8cb' : '#ff8a80';
-          return `<div style="margin:8px 0 4px;font-size:0.72rem;color:var(--text-muted);display:flex;align-items:center;gap:8px;">
-            <span>能量 ${e}%</span>
-            <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
-              <div style="height:100%;width:${e}%;background:${color};border-radius:3px;transition:width .5s;"></div>
-            </div>
-          </div>`;
-        })() : ''}
         ${extraBlocks.length > 0 ? `
           <button class="联想-toggle" data-expand="${uniqueId}" style="margin-top:10px;font-size:0.8rem;padding:4px 12px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:4px;cursor:pointer;">展开联想 ▾</button>
           <div id="${uniqueId}" class="联想-panel" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(168,156,192,0.08);border-left:2px solid var(--gold);border-radius:0 6px 6px 0;font-size:0.85rem;">
@@ -637,26 +585,6 @@ function renderReadingResult() {
   
   dom.resultContent.innerHTML = html;
   dom.resultSection.classList.remove('hidden');
-
-  // ✨ v4：正念提示卡（80% 概率显示，避免每次打扰）
-  if (Math.random() < 0.8 && window.TarotExtrasV4) {
-    setTimeout(() => window.TarotExtrasV4.showMindfulnessCard(), 500);
-  }
-  // ✨ v4：检查成就
-  if (window.TarotExtrasV4) {
-    try {
-      const hist = JSON.parse(localStorage.getItem("tarot_history") || "[]");
-      const diary = JSON.parse(localStorage.getItem("tarot_diary") || "{}");
-      const streaks = JSON.parse(localStorage.getItem("tarot_checkins") || "[]");
-      window.TarotExtrasV4.checkAndAwardAchievements({
-        totalDraws: hist.length,
-        diaryDays: Object.keys(diary).length,
-        streak: window.TarotExtras?.getStreak?.() || 0,
-        spreadsUsed: [...new Set(hist.map(h => h.spreadName || h.spread))],
-        liquidUsed: document.body.getAttribute('data-theme') === 'liquid',
-      });
-    } catch {}
-  }
 
   // v2：绑定展开联想点击事件（事件委托）
   dom.resultContent.addEventListener('click', onExpandToggle);

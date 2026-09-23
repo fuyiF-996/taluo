@@ -44,61 +44,13 @@ const CloudConfig = {
 
 /**
  * 异步拉取云端配置并合并到 TAROT_DECK
- *
- * 性能设计（首屏优先）：
- *   1. localStorage 里有上次的配置 → 立刻应用（0 延迟），页面不等网络。
- *   2. 缓存还在有效期（6 小时）内 → 连请求都不发，避免每次打开都挂一个跨境请求
- *      （api.taluo996.top 偶尔握手很慢）。
- *   3. 需要刷新时后台静默拉取，5 秒超时即放弃，永远不阻塞占卜流程。
  */
-const CONFIG_CACHE_KEY = "tarot_cloud_config_v1";
-const CONFIG_TTL_MS = 6 * 60 * 60 * 1000;   // 6 小时
-
-function readConfigCache() {
-  try {
-    const raw = localStorage.getItem(CONFIG_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || !parsed.config) return null;
-    return { config: parsed.config, ts: parsed.ts || 0 };
-  } catch (e) {
-    return null;
-  }
-}
-
-function writeConfigCache(config) {
-  try {
-    localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify({ ts: Date.now(), config }));
-  } catch (e) {
-    // 隐私模式 / 配额不足：忽略即可，只是下次还得联网
-  }
-}
-
 async function loadCloudConfig() {
-  const cached = readConfigCache();
-
-  // 1. 有缓存先应用，保证抽牌权重 / 牌阵开关立刻生效
-  if (cached) {
-    applyCloudConfig(cached.config);
-    CloudConfig.loaded = true;
-  }
-
-  // 2. 缓存还新鲜就不再联网
-  if (cached && Date.now() - cached.ts < CONFIG_TTL_MS) {
-    console.log("[塔罗] 使用本地缓存的云端配置（未过期，跳过请求）");
-    return;
-  }
-
-  // 3. 后台刷新：5 秒超时，失败就继续用缓存 / 内置默认值
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 5000);
   try {
     const resp = await fetch(`${API_BASE}/`, {
       method: "GET",
       headers: { "Accept": "application/json" },
-      signal: ctrl.signal,
     });
-    clearTimeout(t);
     if (!resp.ok) throw new Error(`API 返回 ${resp.status}`);
 
     const data = await resp.json();
@@ -108,17 +60,11 @@ async function loadCloudConfig() {
     }
 
     applyCloudConfig(data.config);
-    writeConfigCache(data.config);
     CloudConfig.loaded = true;
     console.log("[塔罗] 云端配置已加载 ✓");
 
   } catch (err) {
-    clearTimeout(t);
-    if (err.name === 'AbortError') {
-      console.warn("[塔罗] 云端 API 超时（>5s），继续使用本地缓存 / 默认值");
-    } else {
-      console.warn("[塔罗] 无法连接云端 API，继续使用本地缓存 / 默认值：", err.message);
-    }
+    console.warn("[塔罗] 无法连接云端 API，使用内置默认值：", err.message);
   }
 }
 

@@ -64,13 +64,15 @@ body {
   color: var(--text-white);
   line-height: 1.6;
   
-  /* ⚠ 性能：原来这里是「多层渐变 + background-attachment: fixed」。
-     background-attachment: fixed 在移动端 Chrome 上会让整页在滚动时逐帧重绘
-     （拿不到合成器快速滚动路径）；再叠上 6 张卡的 backdrop-filter，
-     表现就是「一滚动就卡死」。
-     渐变底图已挪到下面 position: fixed 的 body::before（视觉完全一样，
-     但固定层滚动时不需要重绘）。这里只留一个纯色兜底。 */
-  background: var(--bg-deep);
+  /* 深色星空背景 - 多层渐变叠加 */
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(157, 78, 221, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 80%, rgba(100, 50, 150, 0.2) 0%, transparent 50%),
+    linear-gradient(135deg, var(--bg-deep) 0%, var(--bg-mid) 50%, #0f0829 100%);
+  
+  /* 固定背景，不随滚动移动 */
+  background-attachment: fixed;
   position: relative;
 }
 
@@ -101,18 +103,10 @@ body::before {
     radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,0.7), transparent),
     radial-gradient(1px 1px at 75% 15%, white, transparent),
     radial-gradient(1px 1px at 95% 40%, rgba(157,78,221,0.5), transparent),
-    radial-gradient(1.5px 1.5px at 30% 95%, white, transparent),
-    /* ↓↓↓ 原来挂在 body 上的渐变底图，现在挂在这个固定层里（滚动不重绘）↓↓↓ */
-    radial-gradient(ellipse at 20% 20%, rgba(157, 78, 221, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
-    radial-gradient(ellipse at 50% 80%, rgba(100, 50, 150, 0.2) 0%, transparent 50%),
-    linear-gradient(135deg, var(--bg-deep) 0%, var(--bg-mid) 50%, #0f0829 100%);
+    radial-gradient(1.5px 1.5px at 30% 95%, white, transparent);
   
-  /* ⚠ 性能：这里曾经是 animation: twinkle（全屏固定层的 opacity 无限动画）。
-     每一帧星星层透明度都在变 → 所有 .glass-card 的 backdrop-filter 每帧都要
-     重新模糊采样一次，整页 60fps 持续重绘，低端机/集显直接卡死。
-     现在改为静态星点，闪烁效果交给小面积的 .float-star（见文件末尾 U30）。
-     想恢复整层闪烁：给 <body> 加 class="star-twinkle"。 */
+  /* 星星闪烁动画 */
+  animation: twinkle 4s ease-in-out infinite alternate;
 }
 
 /* 第二层星点 */
@@ -134,11 +128,10 @@ body::after {
     radial-gradient(1px 1px at 5% 85%, white, transparent),
     radial-gradient(1px 1px at 95% 10%, rgba(212,175,55,0.4), transparent);
   
-  /* 同上：全屏层的无限动画会持续让毛玻璃重新取样，已改为静态 */
+  animation: twinkle 6s ease-in-out infinite alternate-reverse;
 }
 
-/* 星星闪烁 keyframes
- * 保留供 .float-star / body.star-twinkle 使用 */
+/* 星星闪烁 keyframes */
 @keyframes twinkle {
   0% { opacity: 0.4; }
   50% { opacity: 1; }
@@ -849,8 +842,7 @@ body[data-theme="liquid"]::before {
     radial-gradient(ellipse 40% 35% at 12% 82%,
       rgba(231, 93, 135, 0.15), transparent 55%),
     linear-gradient(180deg, #06050d 0%, #0a0818 40%, #06050d 100%);
-  /* 这里不再需要 background-attachment: fixed —— 它本身就是 position: fixed 层，
-     加了反而会在移动端触发逐帧重绘 */
+  background-attachment: fixed;
 }
 
 /* ---------- 液态玻璃卡片 —— 核心实现 ----------
@@ -948,13 +940,8 @@ body[data-theme="liquid"] .glass-card::after {
     rgba(255, 255, 255, 0.03) 310deg,
     transparent 360deg
   );
-  opacity: 0.5;
-  /* ⚠ 原来这里是 animation: liquidSheen 22s linear infinite：
-     每张卡一个永不停止的旋转动画，卡内又有 backdrop-filter，
-     会让整张卡的合成层不停失效重建。改成 hover 时才转，静置时零开销。 */
-}
-body[data-theme="liquid"] .glass-card:hover::after {
   animation: liquidSheen 22s linear infinite;
+  opacity: 0.5;
 }
 
 @keyframes liquidSheen {
@@ -970,13 +957,11 @@ body[data-theme="liquid"] .glass-card:not(.tarot-area),
 body[data-theme="liquid"] .lib-card,
 body[data-theme="liquid"] .lib-modal-card {
   transition: transform 0.15s ease-out;
+  will-change: transform;
 }
 body[data-theme="liquid"] .glass-card:not(.tarot-area):hover,
 body[data-theme="liquid"] .lib-card:hover,
 body[data-theme="liquid"] .lib-modal-card:hover {
-  /* will-change 只在 hover 时生效：常驻 will-change 会把每张卡都变成独立合成层，
-     配合 backdrop-filter 会明显吃显存/拖慢低端机。 */
-  will-change: transform;
   transform: perspective(800px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
   transition: transform 0.08s ease-out;
 }
@@ -1149,10 +1134,7 @@ body[data-theme="liquid"] .theme-fab {
 body[data-theme="liquid"] .settings-panel {
   background: rgba(255, 255, 255, 0.11);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  /* ⚠ 这里原来带 url(#liquid-distort)（feTurbulence + feDisplacementMap）：
-     在 backdrop-filter 里用 SVG 滤镜会让 Chrome 退化成软件逐帧光栅化整块区域，
-     面板一开就掉帧、严重时整页卡死。折射质感改由 ::before 的高光 + 边框光承担。 */
-  backdrop-filter: blur(2px) saturate(180%) brightness(1.08);
+  backdrop-filter: blur(2px) saturate(180%) brightness(1.08) url(#liquid-distort);
   -webkit-backdrop-filter: blur(2px) saturate(180%) brightness(1.08);
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.6),
@@ -1161,7 +1143,7 @@ body[data-theme="liquid"] .settings-panel {
 }
 body[data-theme="liquid"] .history-drawer {
   background: rgba(20, 15, 40, 0.72);
-  backdrop-filter: blur(4px) saturate(180%) brightness(1.08);
+  backdrop-filter: blur(4px) saturate(180%) brightness(1.08) url(#liquid-distort);
   border-left: 1px solid rgba(100, 216, 203, 0.3);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
@@ -1242,8 +1224,7 @@ body[data-theme="liquid"] .lib-modal .lib-modal-card,
 body[data-theme="liquid"] .capsule-item {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  /* 同 settings-panel：backdrop-filter 里不再使用 url(#liquid-distort) */
-  backdrop-filter: blur(2px) saturate(180%) brightness(1.08);
+  backdrop-filter: blur(2px) saturate(180%) brightness(1.08) url(#liquid-distort);
   -webkit-backdrop-filter: blur(2px) saturate(180%) brightness(1.08);
   border-radius: 20px;
   box-shadow:
@@ -1329,17 +1310,12 @@ body[data-theme="liquid"] ::-webkit-scrollbar-track {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
   opacity: 0;
-  /* visibility: hidden 很关键：只靠 opacity:0 时浏览器仍会保留这个
-     带 backdrop-filter 的合成层（每页都有、一直存在），白白吃掉显存和绘制时间。
-     收起状态彻底不参与绘制，展开时才恢复。 */
-  visibility: hidden;
   transform: translateY(-10px);
   pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+  transition: all 0.25s ease;
 }
 .settings-panel.open {
   opacity: 1;
-  visibility: visible;
   transform: translateY(0);
   pointer-events: auto;
 }
@@ -1573,13 +1549,10 @@ body[data-theme="liquid"] ::-webkit-scrollbar-track {
   100% { transform: scale(0.6); opacity: 0; }
 }
 
-/* C21 Hero 渐入动画
- * ⚠ 性能：原来还动画了 filter: blur(8px) —— 文本模糊滤镜每帧都要重新光栅化，
- * 而且标题还带 background-clip:text + 40px 文字阴影，首屏那 1.4 秒非常吃 CPU。
- * 现在只动 transform / opacity（走合成器）。 */
+/* C21 Hero 渐入动画 */
 @keyframes heroFadeIn {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(24px); filter: blur(8px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
 }
 .header h1 { animation: heroFadeIn 1.2s ease-out; }
 .header .subtitle { animation: heroFadeIn 1.4s ease-out 0.15s both; }
@@ -1689,339 +1662,3 @@ body[data-theme="liquid"] .card-3d.flipped .card-front { animation: flipGlow 1.6
   transition: all .15s;
 }
 .mood-quick-tag:hover { background: rgba(212,175,55,0.2); border-style: solid; }
-
-/* ========================================================
-   ✨ v5 — 30 个纯 UI 变化（全部 CSS + 零 JS 逻辑）
-   风险红线：严禁在 .glass-card / .card-3d 本体加
-   filter / backdrop-filter / perspective() / isolation
-   ======================================================== */
-
-/* U1 标题渐变文字填充 */
-.header h1 {
-  background: linear-gradient(90deg, #d4af37 0%, #9d4edd 50%, #64d8cb 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
-/* U2 打字机光标 + U3 serif italic
-   字体来自异步加载的 Google Fonts；拿不到时依次退回系统衬线字体，
-   保证国内网络下也不会有任何渲染阻塞或空白。 */
-.header .subtitle {
-  font-family: 'Cormorant Garamond', 'Noto Serif SC', Georgia, 'Songti SC', 'STSong', 'SimSun', serif !important;
-  font-style: italic;
-  font-weight: 400;
-}
-.header .subtitle::after {
-  content: '|';
-  display: inline-block;
-  margin-left: 2px;
-  color: var(--gold);
-  animation: u5-blink 1s step-end infinite;
-}
-@keyframes u5-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-/* U4 星星加速 + 加大体积 */
-.star { animation-duration: 20s !important; width: 3px !important; height: 3px !important; }
-
-/* U5 每日卡随机旋转 + U6 金色虚线边框 */
-.daily-card {
-  border: 2px dashed rgba(212,175,55,0.5) !important;
-}
-.daily-card .dc-left img {
-  transform: rotate(-2deg);
-  transition: transform .3s;
-}
-.daily-card .dc-left img:hover {
-  transform: rotate(0deg) scale(1.03);
-}
-
-/* U7 开始按钮胶囊圆角 + U8 呼吸光晕
- * ⚠ 性能：原来直接 animation 到 box-shadow —— box-shadow 每帧重绘，
- * 而且按钮在 .glass-card 里，会让整张卡的毛玻璃每帧重新模糊一次。
- * 现在改成「静态 box-shadow + 只动 opacity 的伪元素」，纯合成层动画，几乎零开销。 */
-#start-btn {
-  position: relative;
-  border-radius: 28px !important;
-  padding: 14px 36px !important;
-  font-size: 1.1rem !important;
-}
-#start-btn::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: 0 0 25px rgba(212,175,55,0.6), 0 0 50px rgba(157,78,221,0.3);
-  opacity: 0.45;
-  animation: u5-glowPulse 2.8s ease-in-out infinite;
-}
-@keyframes u5-glowPulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
-}
-
-/* U9 牌阵按钮统一高度 */
-.spread-btn { min-height: 64px; }
-
-/* U10 选中牌阵按钮金色发光 */
-.spread-btn.active {
-  border: 2px solid var(--gold) !important;
-  box-shadow: 0 0 20px rgba(212,175,55,0.5), inset 0 0 10px rgba(212,175,55,0.1);
-  background: rgba(212,175,55,0.15) !important;
-}
-
-/* U11 问题输入框 focus 金色发光 */
-#question-input:focus {
-  box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(212,175,55,0.3);
-  border-color: var(--gold) !important;
-}
-
-/* U12 洗牌瀑布下落动画（只给 .tarot-area.shuffling 状态的 .glass-card） */
-.tarot-area.shuffling .glass-card {
-  animation: u5-waterfall 1.2s ease-out forwards;
-}
-@keyframes u5-waterfall {
-  0% { transform: translateY(-80px) rotate(-8deg); opacity: 0; }
-  60% { transform: translateY(8px) rotate(2deg); opacity: 1; }
-  100% { transform: translateY(0) rotate(0); opacity: 1; }
-}
-
-/* U13 翻牌放慢 */
-.card-3d {
-  transition: transform 1.2s cubic-bezier(0.4, 0.1, 0.3, 1.2);
-}
-
-/* U14 卡牌正反圆角缩小 */
-.card-face { border-radius: 14px !important; }
-
-/* U15 液态玻璃呼吸 blur（⚠ 只加 ::before 伪元素，严禁本体！） */
-.theme-liquid .glass-card::before {
-  animation: u5-liquidBreathe 4s ease-in-out infinite;
-  opacity: 0.6;
-}
-@keyframes u5-liquidBreathe {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
-}
-
-/* U16 液态玻璃卡 hover 悬浮（只给非 .tarot-area 的卡） */
-.theme-liquid .glass-card:not(.tarot-area .glass-card):hover {
-  transform: translateY(-4px);
-  transition: transform .25s ease-out;
-}
-
-/* U17 液态玻璃 3D tilt 幅度加大（CSS 变量默认 ±6°，用 !important 覆盖到 ±12°） */
-.theme-liquid .glass-card { --tilt-max: 12deg !important; }
-
-/* U18 能量值条渐变填充 */
-.energy-bar-fill {
-  background: linear-gradient(90deg, #64d8cb, #d4af37) !important;
-}
-
-/* U19 分享按钮渐变边框 */
-#share-btn, .share-btn {
-  background: linear-gradient(transparent, transparent) padding-box,
-              linear-gradient(135deg, var(--gold), #9d4edd) border-box !important;
-  border: 2px solid transparent !important;
-  border-radius: 22px !important;
-}
-
-/* U20 历史抽屉滑入动画 */
-.history-drawer {
-  animation: u5-drawerSlide 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-@keyframes u5-drawerSlide {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-/* U21 设置面板星点纹理 */
-.settings-panel {
-  background-image: radial-gradient(rgba(212,175,55,0.15) 1px, transparent 1px) !important;
-  background-size: 12px 12px !important;
-}
-
-/* U22 slider 轨道加粗 */
-input[type="range"] {
-  height: 8px !important;
-  border-radius: 4px !important;
-}
-input[type="range"]::-webkit-slider-thumb {
-  margin-top: -4px;
-}
-
-/* U23 成就 toast 发光胶囊 */
-.toast.show {
-  box-shadow: 0 0 20px rgba(212,175,55,0.5), 0 0 40px rgba(157,78,221,0.3);
-  border-radius: 24px !important;
-}
-
-/* U24 日历网格金色边框 */
-.cal-cell {
-  border: 1px solid rgba(212,175,55,0.4) !important;
-}
-
-/* U25 Admin 登录页塔罗光晕 */
-#login-page::before {
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 600px; height: 600px;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* U26 Admin Tab 淡入 */
-.admin-tab-content {
-  animation: u5-fadeTab 0.25s ease-out;
-}
-@keyframes u5-fadeTab {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* U27 Admin 卡牌缩略图金色边框 */
-.card-item img, .admin-card-thumb img {
-  border: 1px solid rgba(212,175,55,0.3) !important;
-  border-radius: 6px !important;
-}
-
-/* U28 全站滚动条美化 */
-::-webkit-scrollbar { width: 6px; height: 6px; background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(var(--gold), var(--purple-primary, #9d4edd));
-  border-radius: 3px;
-}
-::-webkit-scrollbar-track { background: transparent; }
-
-/* U29 liquid 翻牌后彩虹边（⚠ 用 box-shadow 不是 outline，安全不破坏 preserve-3d） */
-.theme-liquid .card-3d.flipped {
-  box-shadow: 0 0 0 2px transparent, 0 0 16px rgba(212,175,55,0.4);
-  animation: u5-rainbowGlow 3s linear infinite;
-}
-@keyframes u5-rainbowGlow {
-  0% { box-shadow: 0 0 0 2px rgba(212,175,55,0.6), 0 0 20px rgba(212,175,55,0.5); }
-  33% { box-shadow: 0 0 0 2px rgba(157,78,221,0.6), 0 0 20px rgba(157,78,221,0.5); }
-  66% { box-shadow: 0 0 0 2px rgba(100,216,203,0.6), 0 0 20px rgba(100,216,203,0.5); }
-  100% { box-shadow: 0 0 0 2px rgba(212,175,55,0.6), 0 0 20px rgba(212,175,55,0.5); }
-}
-
-/* U30 Hero 区星尘飘浮 */
-.float-star {
-  position: absolute;
-  pointer-events: none;
-  font-size: 1.4rem;
-  color: var(--gold);
-  opacity: 0.5;
-  animation: u5-floatStar 8s ease-in-out infinite;
-}
-.float-star:nth-child(1) { top: 20%; left: 8%; animation-delay: 0s; }
-.float-star:nth-child(2) { top: 60%; right: 10%; animation-delay: 2.5s; animation-duration: 10s; }
-.float-star:nth-child(3) { top: 80%; left: 25%; animation-delay: 5s; animation-duration: 12s; }
-@keyframes u5-floatStar {
-  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
-  50% { transform: translateY(-20px) rotate(180deg); opacity: 0.7; }
-}
-
-/* 完成 UI 变化，共 30 项 */
-
-
-/* ========================================================
-   ✨ 性能兜底层 —— .perf-lite
-   由 index.html 头部守卫（低端设备 / 系统「减少动效」）
-   或 js/perf.js 看门狗（实测帧率过低）给 <html> 加类。
-   目的：必要时放弃最贵的视觉效果，保证页面能流畅打开和操作。
-   ======================================================== */
-
-/* 1. 关掉最贵的毛玻璃：backdrop-filter 是首屏卡顿的头号开销 */
-html.perf-lite .glass-card,
-html.perf-lite .glass-card::before,
-html.perf-lite .settings-fab,
-html.perf-lite .settings-panel,
-html.perf-lite .history-drawer,
-html.perf-lite .toast,
-html.perf-lite .lib-card,
-html.perf-lite .capsule-item,
-html.perf-lite .lib-modal-card,
-html.perf-lite textarea,
-html.perf-lite input,
-html.perf-lite select {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-/* 没有模糊后把底色调亮一点，保证文字对比度不下降 */
-html.perf-lite .glass-card { background: rgba(255, 255, 255, 0.09); }
-
-/* 2. 关掉「无限循环」的装饰动画（翻牌等一次性过渡保持不动） */
-html.perf-lite body::before,
-html.perf-lite body::after,
-html.perf-lite .status-message,
-html.perf-lite .dc-orb,
-html.perf-lite .header .subtitle::after,
-html.perf-lite #start-btn::after,
-html.perf-lite .float-star,
-html.perf-lite #crystal-ball,
-html.perf-lite #crystal-ball i,
-html.perf-lite body[data-theme="liquid"] .glass-card::after {
-  animation: none !important;
-}
-html.perf-lite .float-star { opacity: 0.45; }
-/* 常驻 will-change 会把元素钉成独立合成层，兜底模式下全部取消 */
-html.perf-lite * { will-change: auto !important; }
-
-/* 3. 可选的整层星星闪烁（默认关闭，原因见上方 body::before 的注释）
-      想恢复：<body class="star-twinkle"> */
-body.star-twinkle::before { animation: twinkle 4s ease-in-out infinite alternate; }
-body.star-twinkle::after  { animation: twinkle 6s ease-in-out infinite alternate-reverse; }
-
-/* 4. 系统级「减少动效」：只关装饰动画，不动翻牌等必要过渡 */
-@media (prefers-reduced-motion: reduce) {
-  body::before,
-  body::after,
-  .status-message,
-  .dc-orb,
-  .header .subtitle::after,
-  #start-btn::after,
-  .float-star,
-  #crystal-ball,
-  #crystal-ball i,
-  body[data-theme="liquid"] .glass-card::after {
-    animation: none !important;
-  }
-}
-
-/* ========================================================
-   ✨ 移动端 / 触屏设备：直接走轻量视觉
-   原因：手机上「6 张大卡 backdrop-filter: blur(12px)」是滚动掉帧的主因
-   —— 毛玻璃在滚动时每帧都要重新对背景取样。这里换成半透明底色 + 边框光，
-   观感接近，但滚动成本几乎为零；桌面端仍保留完整液态玻璃。
-   ======================================================== */
-@media (max-width: 900px), (pointer: coarse) {
-  .glass-card,
-  .glass-card::before,
-  .settings-fab,
-  .settings-panel,
-  .theme-fab,
-  .history-drawer,
-  .toast,
-  .lib-card,
-  .lib-modal-card,
-  .capsule-item,
-  textarea,
-  input,
-  select {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  /* 没有模糊后把底色稍微加亮，保持文字对比度和「玻璃」观感 */
-  .glass-card { background: rgba(255, 255, 255, 0.09); }
-  /* 液态玻璃主题在手机上同样不跑扫描光泽动画 */
-  body[data-theme="liquid"] .glass-card:hover::after { animation: none; }
-}
