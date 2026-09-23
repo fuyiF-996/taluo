@@ -118,10 +118,10 @@ async function handleRequest(request, env, ctx) {
       return handleChangePassword(request, env, cors);
     }
 
-    // ======== v6: 权重系统 ========
+    // ======== v8: 权重系统 ========
     if (method === "GET" && pathname === "/weights") {
-      const data = await env.TALUO_KV.get("WEIGHTS");
-      return jsonResp({ ok: true, weights: data ? JSON.parse(data) : {} }, cors);
+      const d = await env.TALUO_KV.get("WEIGHTS");
+      return jsonResp({ ok: true, weights: d ? JSON.parse(d) : {} }, cors);
     }
     if (method === "POST" && pathname === "/weights") {
       try {
@@ -131,95 +131,65 @@ async function handleRequest(request, env, ctx) {
       } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
     }
 
-    // ======== v6: 主题管理 ========
-    if (method === "GET" && pathname === "/themes") {
-      const data = await env.TALUO_KV.get("THEMES");
-      return jsonResp({ ok: true, themes: data ? JSON.parse(data) : {} }, cors);
+    // ======== v8: 敏感词 ========
+    if (method === "GET" && pathname === "/sensitive-words") {
+      const d = await env.TALUO_KV.get("SENSITIVE_WORDS");
+      return jsonResp({ ok: true, words: d ? JSON.parse(d) : [] }, cors);
     }
-    if (method === "POST" && pathname === "/themes") {
+    if (method === "POST" && pathname === "/sensitive-words") {
       try {
         const body = await request.json();
-        await env.TALUO_KV.put("THEMES", JSON.stringify(body));
+        await env.TALUO_KV.put("SENSITIVE_WORDS", JSON.stringify(body));
         return jsonResp({ ok: true }, cors);
       } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
     }
 
-    // ======== v6: metrics ========
-    if (method === "GET" && pathname === "/metrics") {
-      const keys = ["WEIGHTS", "THEMES", "ANNOUNCEMENT", "AGENT"];
-      const counts = {};
-      for (const k of keys) {
-        const v = await env.TALUO_KV.get(k);
-        counts[k] = v ? v.length : 0;
-      }
-      return jsonResp({ ok: true, kvBytes: counts, time: Date.now() }, cors);
+    // ======== v8: 公告 ========
+    if (method === "GET" && pathname === "/announcement") {
+      const d = await env.TALUO_KV.get("ANNOUNCEMENT");
+      return jsonResp({ ok: true, announcement: d ? JSON.parse(d) : null }, cors);
+    }
+    if (method === "POST" && pathname === "/announcement") {
+      try {
+        const body = await request.json();
+        await env.TALUO_KV.put("ANNOUNCEMENT", JSON.stringify({ ...body, time: Date.now() }));
+        return jsonResp({ ok: true }, cors);
+      } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
     }
 
-    // ======== v6: 回滚 ========
+    // ======== v8: 维护模式 ========
+    if (method === "GET" && pathname === "/maintenance") {
+      const d = await env.TALUO_KV.get("MAINTENANCE");
+      return jsonResp({ ok: true, maintenance: d === "1" }, cors);
+    }
+    if (method === "POST" && pathname === "/maintenance") {
+      try {
+        const body = await request.json();
+        await env.TALUO_KV.put("MAINTENANCE", body.on ? "1" : "0");
+        return jsonResp({ ok: true }, cors);
+      } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
+    }
+
+    // ======== v8: metrics ========
+    if (method === "GET" && pathname === "/metrics") {
+      const keys = ["WEIGHTS", "SENSITIVE_WORDS", "ANNOUNCEMENT", "MAINTENANCE", "ROLLBACK_POINT", "AGENT"];
+      const kv = {};
+      for (const k of keys) {
+        const v = await env.TALUO_KV.get(k);
+        kv[k] = v ? v.length : 0;
+      }
+      return jsonResp({
+        ok: true, kvBytes: kv, time: Date.now(),
+        uptime: process.uptime ? Math.floor(process.uptime()) : 0
+      }, cors);
+    }
+
+    // ======== v8: rollback ========
     if (method === "POST" && pathname === "/rollback") {
       try {
         const body = await request.json();
         await env.TALUO_KV.put("ROLLBACK_POINT", JSON.stringify({ time: Date.now(), data: body }));
         return jsonResp({ ok: true, time: Date.now() }, cors);
-      } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
-    }
-
-    // ======== v7: 公告 ========
-    if (method === "GET" && pathname === "/announcement") {
-      const data = await env.TALUO_KV.get("ANNOUNCEMENT");
-      return jsonResp({ ok: true, announcement: data ? JSON.parse(data) : { text: "" } }, cors);
-    }
-    if (method === "POST" && pathname === "/announcement") {
-      try {
-        const body = await request.json();
-        await env.TALUO_KV.put("ANNOUNCEMENT", JSON.stringify(body));
-        return jsonResp({ ok: true }, cors);
-      } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
-    }
-
-    // ======== v7: 卡牌列表 ========
-    if (method === "GET" && pathname === "/cards") {
-      // 从 TAROT_DATA KV 读卡名列表，或返回固定列表
-      let cards = [];
-      const raw = await env.TALUO_KV.get("TAROT_DATA");
-      if (raw) {
-        try {
-          const arr = JSON.parse(raw);
-          cards = arr.map(c => ({ name: c.name || c }));
-        } catch(e) {}
-      }
-      // 若无 KV 缓存，返回空（前端从本地 tarot-data.js 加载）
-      return jsonResp({ ok: true, cards: cards, note: "前端优先使用本地 tarot-data.js" }, cors);
-    }
-
-    // ======== v7: 每日卡 ========
-    if (method === "GET" && pathname === "/daily-card") {
-      const today = new Date().toISOString().slice(0,10);
-      const data = await env.TALUO_KV.get("DAILY_CARD_" + today);
-      if (data) return jsonResp({ ok: true, card: JSON.parse(data), cached: true }, cors);
-      // 没缓存：从 ANNOUNCEMENT DAILY 字段取，或随机
-      const annStr = await env.TALUO_KV.get("ANNOUNCEMENT");
-      let specified = null;
-      if (annStr) {
-        try { specified = JSON.parse(annStr).dailyCard || null; } catch(e) {}
-      }
-      if (specified) {
-        await env.TALUO_KV.put("DAILY_CARD_" + today, JSON.stringify({ name: specified, date: today }));
-        return jsonResp({ ok: true, card: { name: specified, date: today }, cached: false }, cors);
-      }
-      return jsonResp({ ok: true, card: null, hint: "请在 Admin 指定每日卡，或前端用本地随机" }, cors);
-    }
-
-    // ======== v7: 敏感词 ========
-    if (method === "GET" && pathname === "/sensitive-words") {
-      const data = await env.TALUO_KV.get("SENSITIVE_WORDS");
-      return jsonResp({ ok: true, words: data ? JSON.parse(data) : [] }, cors);
-    }
-    if (method === "POST" && pathname === "/sensitive-words") {
-      try {
-        const body = await request.json();
-        await env.TALUO_KV.put("SENSITIVE_WORDS", JSON.stringify(body.words || body));
-        return jsonResp({ ok: true }, cors);
       } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
     }
 

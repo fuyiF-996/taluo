@@ -1,0 +1,313 @@
+/* ============================================================
+ * v8-extras.css —— 30 UI 创新点（纯 CSS + 零侵入）
+ * 红线：绝不直接改 .glass-card / .card-3d 本体属性
+ * 限制：≤ 800 行
+ * ============================================================ */
+
+/* ---------- U11 选中文字金色高亮 ---------- */
+::selection { background: rgba(212,175,55,0.4); color: #fff; }
+
+/* ---------- U14 自定义滚动条 ---------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--gold-dark), var(--gold));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--gold), var(--gold-light)); }
+
+/* ---------- U29 焦点环美化 ---------- */
+*:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- U30 跳过链接（a11y） ---------- */
+.skip-link {
+  position: absolute; top: -100px; left: 8px;
+  background: var(--gold); color: #000; padding: 8px 16px;
+  border-radius: 4px; z-index: 9999; font-weight: 700;
+}
+.skip-link:focus { top: 8px; }
+
+/* ---------- U7 页面角落魔法阵 ---------- */
+body::before, body::after,
+.page-wrap::before, .page-wrap::after {
+  content: '';
+  position: fixed; width: 200px; height: 200px;
+  pointer-events: none; opacity: 0.06; z-index: 0;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 40px, rgba(212,175,55,0.3) 40px 41px),
+    repeating-linear-gradient(90deg, transparent 0 40px, rgba(212,175,55,0.3) 40px 41px);
+}
+body::before { top: -80px; left: -80px; animation: v8-spin 60s linear infinite; }
+body::after { bottom: -80px; right: -80px; animation: v8-spin-rev 80s linear infinite; }
+.page-wrap::before { top: auto; left: -80px; bottom: -80px; animation: v8-spin 100s linear infinite; }
+.page-wrap::after { right: -80px; top: -80px; animation: v8-spin-rev 70s linear infinite; }
+@keyframes v8-spin { to { transform: rotate(360deg); } }
+@keyframes v8-spin-rev { to { transform: rotate(-360deg); } }
+
+/* ---------- U8 顶部渐变光带 ---------- */
+.v8-light-strip {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent, var(--gold), transparent);
+  background-size: 200% 100%;
+  animation: v8-light-move 8s linear infinite;
+  z-index: 100; pointer-events: none;
+}
+@keyframes v8-light-move { to { background-position: 200% 0; } }
+
+/* ---------- U1 卡牌悬停微光扫过（::after 伪元素） ---------- */
+.card-3d { position: relative; }
+.card-3d::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+  transform: translateX(-100%); pointer-events: none; border-radius: inherit;
+  transition: none; opacity: 0;
+}
+.card-3d:hover::after {
+  animation: v8-shine 1.2s ease-in-out 1;
+  opacity: 1;
+}
+@keyframes v8-shine { to { transform: translateX(100%); } }
+
+/* ---------- U2 金边呼吸脉冲（outline 方案） ---------- */
+.card-3d { outline: 1px solid transparent; transition: outline-color .3s; }
+.card-3d:hover { outline-color: var(--gold); }
+.card-3d.v8-breath {
+  animation: v8-breath-outline 3s ease-in-out infinite;
+}
+@keyframes v8-breath-outline {
+  0%,100% { outline-color: rgba(212,175,55,0.3); }
+  50%    { outline-color: var(--gold); }
+}
+
+/* ---------- U3 抽出轨迹残影 ---------- */
+.card-3d.v8-trail {
+  animation: v8-trail 0.5s ease-out;
+}
+@keyframes v8-trail {
+  0% { transform: scale(0.8) translateY(30px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* ---------- U4 卡背塔罗纹章 ---------- */
+.card-back {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(212,175,55,0.25) 0%, transparent 60%),
+    conic-gradient(from 0deg, var(--gold-dark), var(--gold), var(--gold-light), var(--gold), var(--gold-dark));
+  background-size: 100% 100%, 20px 20px;
+  border: 2px solid var(--gold);
+}
+
+/* ---------- U5 正逆位微图标 ---------- */
+.card-3d[data-reversed="true"]::before {
+  content: '↑'; position: absolute; top: 4px; right: 4px;
+  color: var(--gold); font-size: 10px; font-weight: 700;
+  background: rgba(0,0,0,0.5); padding: 2px 4px; border-radius: 3px;
+  z-index: 5;
+}
+
+/* ---------- U12 标题首字母花体 ---------- */
+.glass-card h2::first-letter, .glass-card h1::first-letter {
+  font-family: 'Cormorant Garamond', 'Noto Serif SC', serif;
+  font-style: italic; font-weight: 700;
+  font-size: 1.4em;
+  color: var(--gold-light);
+}
+
+/* ---------- U13 段落首行缩进 ---------- */
+.result-text p, .tarot-result p { text-indent: 2em; line-height: 1.8; }
+
+/* ---------- U15 按钮按下反馈 ---------- */
+button:active, .btn:active, [class*="button"]:active {
+  transform: scale(0.97);
+  filter: brightness(0.9);
+}
+
+/* ---------- U16 涟漪扩散 ---------- */
+.v8-ripple {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,0.35);
+  transform: scale(0); animation: v8-ripple 0.6s ease-out;
+  pointer-events: none;
+}
+@keyframes v8-ripple { to { transform: scale(4); opacity: 0; } }
+
+/* ---------- U17 Toast ---------- */
+.v8-toast-wrap {
+  position: fixed; top: 20px; right: 20px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.v8-toast {
+  padding: 12px 20px; border-radius: 10px;
+  background: rgba(15,10,30,0.92); color: #fff;
+  border: 1px solid var(--gold);
+  box-shadow: 0 4px 20px rgba(212,175,55,0.3);
+  font-size: 14px; font-weight: 500;
+  animation: v8-toast-in 0.3s ease-out;
+  display: flex; align-items: center; gap: 8px;
+  backdrop-filter: blur(20px);
+}
+.v8-toast.success { border-color: #4ade80; box-shadow: 0 4px 20px rgba(74,222,128,0.3); }
+.v8-toast.warn    { border-color: #fbbf24; box-shadow: 0 4px 20px rgba(251,191,36,0.3); }
+.v8-toast.error   { border-color: #f87171; box-shadow: 0 4px 20px rgba(248,113,113,0.3); }
+@keyframes v8-toast-in  { from { transform: translateX(120%); opacity: 0; } }
+@keyframes v8-toast-out { to   { transform: translateX(120%); opacity: 0; } }
+
+/* ---------- U18 Modal ---------- */
+.v8-modal-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  animation: v8-fade-in 0.2s ease-out;
+}
+.v8-modal {
+  background: linear-gradient(135deg, rgba(30,20,55,0.95), rgba(15,10,30,0.98));
+  border: 1px solid var(--gold); border-radius: 16px;
+  padding: 28px; max-width: 480px; width: 90%;
+  box-shadow: 0 20px 60px rgba(212,175,55,0.2);
+  animation: v8-modal-pop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  max-height: 85vh; overflow-y: auto;
+}
+.v8-modal h3 { color: var(--gold); margin: 0 0 16px; font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; }
+.v8-modal-close {
+  position: absolute; top: 12px; right: 12px;
+  background: none; border: none; color: var(--text-muted);
+  font-size: 20px; cursor: pointer;
+}
+@keyframes v8-fade-in { from { opacity: 0; } }
+@keyframes v8-modal-pop { from { transform: scale(0.8); opacity: 0; } }
+
+/* ---------- U22 成就徽章 ---------- */
+.v8-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border-radius: 20px;
+  background: linear-gradient(135deg, rgba(212,175,55,0.2), rgba(212,175,55,0.05));
+  border: 1px solid var(--gold); color: var(--gold-light);
+  font-size: 12px; font-weight: 600;
+}
+.v8-badge.locked { opacity: 0.4; filter: grayscale(1); }
+
+/* ---------- U23 私密模式遮罩 ---------- */
+.v8-private { position: relative; }
+.v8-private .result-text, .v8-private .tarot-result-text {
+  filter: blur(8px); pointer-events: none; user-select: none;
+}
+.v8-private::before {
+  content: '🔒 私密模式'; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%); z-index: 10;
+  background: var(--gold); color: #000; padding: 10px 24px;
+  border-radius: 8px; font-weight: 700; font-size: 14px;
+}
+
+/* ---------- U24 抽牌计数挂件 ---------- */
+.v8-counter {
+  position: fixed; bottom: 20px; left: 20px;
+  background: linear-gradient(135deg, rgba(30,20,55,0.9), rgba(15,10,30,0.95));
+  border: 1px solid var(--gold); border-radius: 20px;
+  padding: 8px 16px; font-size: 12px; color: var(--text-muted);
+  z-index: 50; cursor: default; user-select: none;
+  box-shadow: 0 4px 20px rgba(212,175,55,0.15);
+}
+.v8-counter b { color: var(--gold); font-size: 16px; font-family: 'Cormorant Garamond', serif; }
+
+/* ---------- 成就徽章展示区 ---------- */
+.v8-achievements {
+  margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+/* ---------- 每日卡按钮 ---------- */
+.v8-daily-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 20px; border-radius: 24px;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  border: none; color: #000; font-weight: 700; font-size: 14px;
+  cursor: pointer; box-shadow: 0 4px 16px rgba(212,175,55,0.35);
+  transition: transform .2s, box-shadow .2s;
+}
+.v8-daily-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(212,175,55,0.5); }
+
+/* ---------- U25 安全区 ---------- */
+@supports (padding-top: env(safe-area-inset-top)) {
+  body { padding-top: env(safe-area-inset-top); }
+  .v8-counter { bottom: calc(20px + env(safe-area-inset-bottom)); left: calc(20px + env(safe-area-inset-left)); }
+}
+
+/* ---------- U26 触摸设备放大 ---------- */
+@media (pointer: coarse) {
+  button, .btn, [class*="button"], input, select { min-height: 44px; min-width: 44px; }
+}
+
+/* ---------- U27 减少动画 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- U28 深色模式 ---------- */
+@media (prefers-color-scheme: dark) {
+  :root { --v8-bg-tint: #0a0615; }
+}
+
+/* ---------- 密码强度条 ---------- */
+.v8-pw-strength {
+  margin-top: 6px; height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.1); overflow: hidden;
+}
+.v8-pw-strength-bar { height: 100%; width: 0; transition: width .3s, background .3s; }
+.v8-pw-strength-bar.weak   { background: #f87171; width: 25%; }
+.v8-pw-strength-bar.medium { background: #fbbf24; width: 60%; }
+.v8-pw-strength-bar.strong { background: #4ade80; width: 100%; }
+
+/* ---------- 权重滑块样式 ---------- */
+.v8-weight-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.v8-weight-row input[type="range"] { flex: 1; accent-color: var(--gold); }
+.v8-weight-row .v8-w-name { flex: 0 0 120px; font-size: 12px; color: var(--text-muted); }
+.v8-weight-row .v8-w-val  { flex: 0 0 40px; text-align: right; font-variant-numeric: tabular-nums; color: var(--gold); }
+
+/* ---------- 卡牌开关 ---------- */
+.v8-switch {
+  position: relative; width: 36px; height: 20px;
+  background: rgba(255,255,255,0.15); border-radius: 10px;
+  cursor: pointer; transition: background .2s;
+}
+.v8-switch.on { background: var(--gold); }
+.v8-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+}
+.v8-switch.on::after { transform: translateX(16px); }
+
+/* ---------- Admin 新 Tab content ---------- */
+.admin-tab-content { animation: v8-fade-in 0.3s ease-out; }
+
+/* ---------- 敏感词管理 ---------- */
+.v8-word-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; margin: 3px; border-radius: 14px;
+  background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.4);
+  font-size: 12px; color: #f87171;
+}
+.v8-word-chip button {
+  background: none; border: none; color: #f87171; cursor: pointer; font-size: 14px; line-height: 1;
+}
+
+/* ---------- 维护模式遮罩 ---------- */
+.v8-maintenance {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.9); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 20px;
+}
+.v8-maintenance h1 { color: var(--gold); font-family: 'Cormorant Garamond', serif; font-size: 2.5rem; margin: 0 0 20px; }
