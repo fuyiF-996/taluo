@@ -8,44 +8,14 @@
   
   <title>cabbage塔罗 · 神秘抽牌</title>
   
-  <!-- ⚡ 性能守卫：必须在首屏渲染前执行
-       低端设备（核心数/内存很低）或系统开启了「减少动效」时，直接给根元素加
-       .perf-lite，关掉毛玻璃 backdrop-filter 和无限循环动画，避免首屏卡死。 -->
-  <script>
-    (function () {
-      try {
-        var cores = navigator.hardwareConcurrency || 4;
-        var mem = navigator.deviceMemory || 4;
-        var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (cores <= 2 || mem <= 2 || calm) {
-          document.documentElement.classList.add('perf-lite');
-        }
-      } catch (e) { /* 忽略：不影响任何功能 */ }
-    })();
-  </script>
-
-  <!-- U3: Cormorant Garamond serif italic 字体
-       ⚠ 性能红线：字体绝对不能出现在 <head> 的 <link rel="stylesheet"> 里。
-       1) 普通 link 会阻塞首屏渲染；2) 就算是 media="print" 的「异步」写法，
-          样式表依然会把 load 事件拖住 —— 国内连不通 fonts.googleapis.com 时，
-          标签页会一直转圈、window.onload 迟迟不触发，用户看到的就是「打不开」。
-       所以改成：页面 load 之后再动态注入。既不阻塞渲染，也不拖住 load，
-       load 之后请求挂住也无所谓。字体拿不到就用系统衬线字体（CSS 已兜底）。 -->
-  <script>
-    window.addEventListener('load', function () {
-      setTimeout(function () {
-        try {
-          var l = document.createElement('link');
-          l.rel = 'stylesheet';
-          l.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Noto+Serif+SC:wght@400&display=swap';
-          document.head.appendChild(l);
-        } catch (e) {}
-      }, 0);
-    }, { once: true });
-  </script>
-  
+  <!-- Google Fonts: Cormorant Garamond + Noto Serif SC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet">
   <!-- 主样式 -->
   <link rel="stylesheet" href="css/style.css">
+  <!-- ✨ v6 视觉增强 -->
+  <link rel="stylesheet" href="css/v6-extras.css">
   
   <!-- Favicon（使用 emoji 替代，也可以换成自定义图标） -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
@@ -61,11 +31,7 @@
   <div class="container">
     
     <!-- ========== 1. 头部标题区 ========== -->
-    <header class="header" style="position:relative;">
-      <!-- U30 Hero 区星尘飘浮装饰 -->
-      <span class="float-star">✦</span>
-      <span class="float-star">✧</span>
-      <span class="float-star">⋆</span>
+    <header class="header">
       <h1>✦ cabbage塔罗 ✦</h1>
       <div class="subtitle">Mystical Tarot Reading</div>
       <div class="divider"></div>
@@ -205,12 +171,12 @@
         本网站仅供娱乐参考，人生的选择权永远在你手中
       </p>
       <div style="margin-top: 14px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-        <a href="library" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📚 牌意百科</a>
-        <a href="capsule" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">🕰️ 时间胶囊</a>
-        <a href="stats" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📊 我的塔罗</a>
+        <a href="library.html" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📚 牌意百科</a>
+        <a href="capsule.html" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">🕰️ 时间胶囊</a>
+        <a href="stats.html" style="color: var(--gold); font-size: 0.8rem; text-decoration: none;">📊 我的塔罗</a>
       </div>
       <!-- 后台入口：极不显眼，hover 才显现 -->
-      <a href="admin" title="" aria-label="后台"
+      <a href="admin.html" title="" aria-label="后台"
          style="display:inline-block;margin-top:16px;opacity:0.15;transition:opacity .3s;font-size:0.75rem;color:var(--text-muted);text-decoration:none;"
          onmouseover="this.style.opacity='0.5'" onmouseout="this.style.opacity='0.15'"
          onfocus="this.style.opacity='0.5'" onblur="this.style.opacity='0.15'">⟡</a>
@@ -219,27 +185,19 @@
   </div>
   
   <!-- ==================== 脚本引入 ==================== -->
-  <!-- 注意：顺序很重要！先数据文件，再配置同步，再设置面板，最后应用逻辑。
-       全部使用 defer：不再阻塞 HTML 解析，首屏能更早画出来；
-       defer 会严格按文档顺序执行，所以上面的依赖顺序依然成立。 -->
-  <script defer src="js/tarot-data.js"></script>
-  <script defer src="js/config-sync.js"></script>
-  <script defer src="js/settings.js"></script>
-  <script defer src="js/feedback.js"></script>
-  <script defer src="js/share-image.js"></script>
-  <script defer src="js/app.js"></script>
-  <script defer src="js/extras.js"></script>
-  <script defer src="js/extras-v4.js"></script>
-  <!-- 性能看门狗：实测帧率过低时自动切到 .perf-lite（关毛玻璃/无限动画） -->
-  <script defer src="js/perf.js"></script>
+  <!-- 注意：顺序很重要！先数据文件，再配置同步，再设置面板，最后应用逻辑 -->
+  <script src="js/tarot-data.js"></script>
+  <script src="js/config-sync.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/feedback.js"></script>
+  <script src="js/share-image.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/extras.js"></script>
+  <script src="js/extras-v6.js"></script>
 
   <!-- ★ 苹果液态玻璃 SVG 折射滤镜（Chrome 渐进增强）
        feTurbulence 低 baseFrequency = 大尺度平滑扭曲
-       feDisplacementMap 模拟玻璃边缘的光线折射
-
-       ⚠ 性能提示：这个滤镜已经不再用于 backdrop-filter（见 css/style.css 的注释）。
-       在 backdrop-filter 里用 SVG 滤镜会退化成软件逐帧光栅化，开面板就卡死。
-       定义保留在这里，供需要时（静态装饰、非毛玻璃元素）通过 filter: url(#liquid-distort) 使用。 -->
+       feDisplacementMap 模拟玻璃边缘的光线折射 -->
   <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute">
     <defs>
       <filter id="liquid-distort" x="-5%" y="-5%" width="110%" height="110%">

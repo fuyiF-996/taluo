@@ -1,0 +1,476 @@
+/* ==========================================================================
+   v6-extras.css — 塔罗 v6 视觉增强
+   所有新增视觉，不追加 style.css
+   ========================================================================== */
+
+/* ==================== v6 主题色板（CSS 变量） ==================== */
+:root {
+  --tarot-gold: #d4a857;
+  --tarot-gold-light: #f0cc7a;
+  --tarot-gold-dark: #a07a30;
+  --tarot-purple: #6b3fa0;
+  --tarot-purple-light: #8a5fbf;
+  --tarot-navy: #1a0e2e;
+  --tarot-ink: #2d1b4e;
+  --tarot-star-bg: #0a0618;
+  --tarot-mystic: #b892e8;
+  --v6-radius: 14px;
+  --v6-shadow-gold: 0 0 20px rgba(212, 168, 87, 0.25);
+}
+
+/* 深色主题（系统跟随） */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tarot-navy: #0d0520;
+    --tarot-ink: #1a0b3a;
+    --v6-shadow-gold: 0 0 30px rgba(212, 168, 87, 0.35);
+  }
+}
+
+/* ==================== A1: 星空粒子背景 ==================== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(2px 2px at 20px 30px, #fff 50%, transparent),
+    radial-gradient(1px 1px at 40px 70px, rgba(255,255,255,0.8) 50%, transparent),
+    radial-gradient(1.5px 1.5px at 90px 40px, rgba(212,168,87,0.9) 50%, transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6) 50%, transparent),
+    radial-gradient(2px 2px at 180px 120px, rgba(184,146,232,0.8) 50%, transparent),
+    radial-gradient(1px 1px at 250px 50px, rgba(255,255,255,0.7) 50%, transparent),
+    radial-gradient(1.5px 1.5px at 300px 160px, rgba(212,168,87,0.7) 50%, transparent),
+    radial-gradient(ellipse at 50% 0%, #2d1b4e 0%, #1a0e2e 40%, #0a0618 100%);
+  background-repeat: repeat, repeat, repeat, repeat, repeat, repeat, repeat, no-repeat;
+  background-size: 320px 200px, 320px 200px, 320px 200px, 320px 200px, 320px 200px, 320px 200px, 320px 200px, 100% 100%;
+  animation: v6-star-float 120s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes v6-star-float {
+  0%   { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
+  100% { background-position: -320px -200px, 320px 200px, -160px 400px, 480px -100px, 160px -300px, -480px 100px, 0 600px, 0 0; }
+}
+
+/* ==================== A2: 水晶球光晕 ==================== */
+.crystal-ball-halo::before,
+.crystal-ball-halo::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.crystal-ball-halo::before {
+  inset: -30%;
+  background: radial-gradient(circle, rgba(212,168,87,0.3) 0%, transparent 60%);
+  animation: v6-halo-pulse 3s ease-in-out infinite;
+}
+.crystal-ball-halo::after {
+  inset: -50%;
+  background: radial-gradient(circle, rgba(107,63,160,0.2) 0%, transparent 55%);
+  animation: v6-halo-pulse 3s ease-in-out infinite reverse;
+}
+@keyframes v6-halo-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+
+/* ==================== A3: 液态玻璃边缘增强 ==================== */
+.glass-card {
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 0 60px rgba(212, 168, 87, 0.06);
+  border: 1px solid rgba(212, 168, 87, 0.18);
+  border-radius: var(--v6-radius);
+}
+
+/* ==================== A4: 呼吸光圈牌桌 ==================== */
+.tarot-table-area::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  box-shadow: 0 0 60px rgba(212, 168, 87, 0.15);
+  animation: v6-breathe 4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes v6-breathe {
+  0%, 100% { box-shadow: 0 0 40px rgba(212,168,87,0.10); }
+  50%      { box-shadow: 0 0 80px rgba(212,168,87,0.25); }
+}
+
+/* ==================== A7: 渐变边框按钮 ==================== */
+.btn-gradient {
+  position: relative;
+  border: none;
+  background: linear-gradient(135deg, var(--tarot-gold) 0%, var(--tarot-gold-light) 50%, var(--tarot-gold) 100%);
+  color: var(--tarot-navy);
+  font-weight: 700;
+  border-radius: var(--v6-radius);
+  overflow: hidden;
+  transition: transform 120ms ease, box-shadow 200ms ease;
+}
+.btn-gradient:hover {
+  box-shadow: 0 4px 20px rgba(212, 168, 87, 0.5);
+}
+.btn-gradient:active { transform: scale(0.96); }
+
+/* ==================== A10: 月相装饰 ==================== */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: 20px;
+  right: 30px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff 0%, #e8e0d0 40%, #c8c0b0 100%);
+  box-shadow: 0 0 20px rgba(255,255,255,0.15), 0 0 60px rgba(184,146,232,0.1);
+  opacity: 0.45;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ==================== A12: 骨架屏 shimmer ==================== */
+@keyframes v6-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.05) 100%);
+  background-size: 800px 100%;
+  animation: v6-shimmer 1.6s linear infinite;
+  border-radius: 8px;
+}
+
+/* ==================== A13: 抽牌区域发光 ==================== */
+.deck-area {
+  transition: box-shadow 300ms ease;
+}
+.deck-area:hover {
+  box-shadow: 0 0 40px rgba(212, 168, 87, 0.3);
+}
+
+/* ==================== A15: 输入框神秘光环 ==================== */
+input:focus, textarea:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(212, 168, 87, 0.4), 0 0 20px rgba(212, 168, 87, 0.2) !important;
+  border-color: var(--tarot-gold) !important;
+}
+
+/* ==================== A31: Google Fonts 字体栈 ==================== */
+.title-font, h1, h2, h3 {
+  font-family: 'Cormorant Garamond', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
+  letter-spacing: 0.02em;
+}
+body {
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* ==================== A33: 按钮字重层次 ==================== */
+.btn-primary { font-weight: 700; }
+.btn-secondary { font-weight: 500; }
+
+/* ==================== A38: 自定义滚动条 ==================== */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 5px; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--tarot-gold), var(--tarot-purple));
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(var(--tarot-gold-light), var(--tarot-purple-light)); background-clip: padding-box; }
+
+/* ==================== A39: 文本选中高亮 ==================== */
+::selection {
+  background: rgba(212, 168, 87, 0.4);
+  color: inherit;
+}
+
+/* ==================== A40: 禁用态 ==================== */
+button:disabled, .btn-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ==================== A46: 平板 768px 断点 ==================== */
+@media (min-width: 768px) {
+  .card-array { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+}
+
+/* ==================== A47: 横屏模式 ==================== */
+@media (orientation: landscape) and (max-height: 500px) {
+  .card-container { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+  .card-slot { margin: 4px; }
+}
+
+/* ==================== A48: 小屏 360px 兜底 ==================== */
+@media (max-width: 360px) {
+  html { font-size: 14px; }
+  .glass-card { padding: 12px; }
+}
+
+/* ==================== A49: Safe Area ==================== */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body { padding-bottom: env(safe-area-inset-bottom); padding-top: env(safe-area-inset-top); }
+}
+
+/* ==================== A50: 触摸友好 44px ==================== */
+button, .btn, input, textarea, select { min-height: 44px; }
+
+/* ==================== A52: 超大屏居中 ==================== */
+@media (min-width: 1440px) {
+  body { max-width: 1400px; margin: 0 auto; }
+}
+
+/* ==================== A53: 打印模式 ==================== */
+@media print {
+  body::before, body::after, .glass-card, .crystal-ball-halo::before, .crystal-ball-halo::after { display: none !important; }
+  .no-print { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+}
+
+/* ==================== A55: 减少动画 ==================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==================== 高对比度模式 ==================== */
+[data-theme="highcontrast"] {
+  --tarot-gold: #ffff00;
+  --tarot-navy: #000000;
+}
+
+/* ==================== A16: 卡牌金边光泽 ==================== */
+.card-face, .card-back {
+  border: 1px solid rgba(212, 168, 87, 0.35);
+  position: relative;
+}
+.card-face::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%);
+  animation: v6-shine 4s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+@keyframes v6-shine {
+  0%, 100% { left: -100%; }
+  50%      { left:  150%; }
+}
+
+/* ==================== A17: 卡背神秘图案 ==================== */
+.card-back {
+  background:
+    linear-gradient(135deg, var(--tarot-navy) 0%, var(--tarot-ink) 50%, var(--tarot-purple) 100%) !important;
+  border: 2px solid var(--tarot-gold);
+}
+.card-back::before {
+  content: '✦';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 40px;
+  color: var(--tarot-gold);
+  opacity: 0.6;
+}
+
+/* ==================== A18: 正逆位视觉 ==================== */
+.card-upright { }
+.card-reversed { transform: rotate(180deg) !important; }
+.card-reversed .card-label::after { content: ' (逆位)'; color: var(--tarot-mystic); }
+
+/* ==================== A19: 翻牌阴影深度 ==================== */
+.card-container.flipped .glass-card {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), 0 0 20px rgba(212, 168, 87, 0.15);
+}
+
+/* ==================== A20: 卡牌抽出动画 ==================== */
+@keyframes v6-draw-out {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  60%  { transform: translateY(-20px) scale(1.04); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.card-drawn { animation: v6-draw-out 600ms ease-out; }
+
+/* ==================== A22: hover 微悬浮 ==================== */
+.card-container:hover .glass-card {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  transition: transform 300ms ease, box-shadow 300ms ease;
+}
+
+/* ==================== A24: 空槽位呼吸提示 ==================== */
+.card-slot-empty::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px dashed rgba(212, 168, 87, 0.3);
+  border-radius: inherit;
+  animation: v6-empty-pulse 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes v6-empty-pulse {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 0.8; }
+}
+
+/* ==================== A25: 点击涟漪 ==================== */
+.card-ripple {
+  position: relative; overflow: hidden;
+}
+.card-ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 0; height: 0;
+  border-radius: 50%;
+  background: rgba(212, 168, 87, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 400ms ease, height 400ms ease, opacity 400ms ease;
+  opacity: 0;
+  pointer-events: none;
+}
+.card-ripple:active::after {
+  width: 200%; height: 200%; opacity: 0;
+}
+
+/* ==================== A27: 结果卡序列入场 ==================== */
+.result-card { opacity: 0; transform: translateY(20px); transition: opacity 500ms ease, transform 500ms ease; }
+.result-card.visible { opacity: 1; transform: translateY(0); }
+
+/* ==================== A28: 牌阵槽位编号 ==================== */
+.card-slot::before {
+  content: attr(data-slot-num);
+  position: absolute;
+  top: -10px; right: -6px;
+  font-size: 10px;
+  color: var(--tarot-gold);
+  background: rgba(0,0,0,0.5);
+  padding: 2px 6px;
+  border-radius: 8px;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+/* ==================== A30: 卡牌角标 ==================== */
+.card-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  color: var(--tarot-gold);
+}
+.card-label[data-suite="major"]::before { content: '★ '; color: var(--tarot-gold-light); }
+.card-label[data-suite="wands"]::before   { content: '🔥 '; }
+.card-label[data-suite="cups"]::before   { content: '💧 '; }
+.card-label[data-suite="swords"]::before { content: '⚔️ '; }
+.card-label[data-suite="pentacles"]::before { content: '💰 '; }
+
+/* ==================== 仪式感分隔线 ==================== */
+.v6-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 24px 0; color: var(--tarot-gold);
+}
+.v6-divider::before, .v6-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--tarot-gold), transparent);
+}
+
+/* ==================== Toast 容器 ==================== */
+#v6-toast-container {
+  position: fixed; top: 24px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+.v6-toast {
+  background: rgba(26, 14, 46, 0.95);
+  color: var(--tarot-gold);
+  padding: 12px 24px;
+  border-radius: var(--v6-radius);
+  border: 1px solid var(--tarot-gold);
+  box-shadow: var(--v6-shadow-gold);
+  font-size: 14px;
+  animation: v6-toast-in 300ms ease, v6-toast-out 300ms ease 1700ms forwards;
+  pointer-events: auto;
+  max-width: 400px; text-align: center;
+}
+.v6-toast.success { border-color: #4ade80; color: #4ade80; }
+.v6-toast.error   { border-color: #f87171; color: #f87171; }
+@keyframes v6-toast-in  { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes v6-toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(-20px); } }
+
+/* ==================== Modal 遮罩 ==================== */
+#v6-modal-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(10, 6, 24, 0.85);
+  backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+#v6-modal-overlay.active { display: flex; animation: v6-modal-in 200ms ease; }
+@keyframes v6-modal-in { from { opacity: 0; } to { opacity: 1; } }
+.v6-modal-box {
+  background: linear-gradient(135deg, var(--tarot-navy), var(--tarot-ink));
+  border: 1px solid var(--tarot-gold);
+  border-radius: var(--v6-radius);
+  padding: 32px; max-width: 520px; width: 100%;
+  max-height: 80vh; overflow-y: auto;
+  animation: v6-modal-box-in 250ms ease;
+}
+@keyframes v6-modal-box-in { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* ==================== 跳过导航链接 ==================== */
+.v6-skip-link {
+  position: absolute; top: -40px; left: 20px;
+  background: var(--tarot-gold); color: var(--tarot-navy);
+  padding: 8px 16px; border-radius: 6px;
+  font-weight: 600; z-index: 10000;
+}
+.v6-skip-link:focus { top: 10px; }
+
+/* ==================== 键盘帮助 modal ==================== */
+.v6-shortcut-list {
+  display: grid; grid-template-columns: auto 1fr; gap: 8px 16px;
+  font-size: 14px;
+}
+.v6-shortcut-list kbd {
+  background: rgba(212,168,87,0.2); border: 1px solid var(--tarot-gold);
+  padding: 2px 8px; border-radius: 4px; font-family: monospace;
+  min-width: 60px; text-align: center;
+}
+
+/* ==================== 塔罗关键词 ==================== */
+.v6-keyword-tag {
+  display: inline-block;
+  background: rgba(212, 168, 87, 0.15);
+  border: 1px solid rgba(212, 168, 87, 0.4);
+  color: var(--tarot-gold);
+  padding: 4px 12px; margin: 2px 4px 2px 0;
+  border-radius: 16px; font-size: 13px;
+  cursor: pointer; transition: all 150ms ease;
+}
+.v6-keyword-tag:hover { background: rgba(212, 168, 87, 0.35); transform: scale(1.05); }
+
+/* ==================== 私密模式遮罩 ==================== */
+.v6-private-mask {
+  position: fixed; inset: 0; z-index: 10000;
+  background: var(--tarot-star-bg);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--tarot-gold); font-size: 18px;
+  backdrop-filter: blur(20px);
+}
+.v6-private-mask button {
+  background: var(--tarot-gold); color: var(--tarot-navy);
+  padding: 12px 32px; border: none; border-radius: 8px;
+  font-weight: 700; font-size: 16px; cursor: pointer;
+}
