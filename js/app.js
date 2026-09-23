@@ -187,7 +187,7 @@ function bindEvents() {
       AppState.currentSpread = btn.dataset.spread;
       
       // 给 cards-display 加个 class 方便样式调整
-      dom.cardsDisplay.classList.remove('single-spread', 'three-spread', 'yesno-spread', 'relationship-spread');
+      dom.cardsDisplay.classList.remove('single-spread', 'three-spread', 'yesno-spread', 'relationship-spread', 'monthly-spread', 'yearly-spread');
       dom.cardsDisplay.classList.add(AppState.currentSpread + '-spread');
     });
   });
@@ -415,6 +415,8 @@ async function startDivination() {
 /* ==================== 洗牌动画显示 ==================== */
 
 function showDeckForShuffling() {
+  // 恢复牌堆区显示（抽牌结束后它被收起了）
+  dom.deckArea.style.display = '';
   // 创建 5 张牌叠放的牌堆效果
   dom.deckArea.innerHTML = '';
   for (let i = 0; i < 5; i++) {
@@ -434,6 +436,8 @@ function hideDeck() {
   dom.deckArea.classList.remove('shuffling');
   setTimeout(() => {
     dom.deckArea.innerHTML = '';
+    // 彻底收起空牌堆区（它固定高 200px，不收会把牌阵整体往下挤）
+    dom.deckArea.style.display = 'none';
   }, 300);
 }
 
@@ -698,6 +702,7 @@ function resetAll() {
   
   // 清空展示区
   dom.deckArea.innerHTML = '';
+  dom.deckArea.style.display = '';
   dom.cardsDisplay.innerHTML = '';
   
   // 隐藏结果

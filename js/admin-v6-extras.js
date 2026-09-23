@@ -431,7 +431,6 @@
     bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);color:var(--gold);padding:6px 16px;z-index:99999;display:flex;gap:20px;font-size:0.75rem;border-bottom:1px solid var(--gold-dark);';
     bar.innerHTML = '<span id="v7-clock">🕐 --:--:--</span>' +
       '<span id="v7-api-status">🔌 检测中...</span>' +
-      '<span id="v7-current-theme">🎨 --</span>' +
       '<span style="margin-left:auto;">👤 ' + (localStorage.getItem('taluo-admin-user') || 'admin') + '</span>';
     document.body.appendChild(bar);
     setInterval(function() {
@@ -446,10 +445,6 @@
       const el = document.getElementById('v7-api-status');
       if (el) { el.textContent = '🔌 API 离线'; el.style.color = '#ff6b6b'; }
     });
-    const curTheme = localStorage.getItem('taluo-theme') || 'cosmic';
-    const names = { cosmic:'🔮 星空紫', moonlit:'🌙 月夜青', ember:'🔥 赤焰', jade:'🍃 翠玉', ocean:'💎 深海蓝' };
-    const tEl = document.getElementById('v7-current-theme');
-    if (tEl) tEl.textContent = '🎨 ' + (names[curTheme] || curTheme);
   }
 
   /* ========== A110 快速返回首页 ========== */
@@ -460,34 +455,6 @@
     btn.href = '/'; btn.innerHTML = '🏠 首页';
     btn.style.cssText = 'position:fixed;top:8px;right:12px;z-index:100000;color:var(--gold);text-decoration:none;background:rgba(0,0,0,0.8);padding:6px 12px;border-radius:6px;border:1px solid var(--gold-dark);font-size:0.8rem;';
     document.body.appendChild(btn);
-  }
-
-  /* ========== A111 主题管理 ========== */
-  const ADMIN_THEMES = [
-    { id:'cosmic',  name:'🔮 星空紫', gold:'#d4af37', purple:'#9d4edd' },
-    { id:'moonlit', name:'🌙 月夜青', gold:'#e8d5a3', purple:'#4ecdc4' },
-    { id:'ember',   name:'🔥 赤焰',   gold:'#ffb347', purple:'#ff6b6b' },
-    { id:'jade',    name:'🍃 翠玉',   gold:'#b8a463', purple:'#2d6a4f' },
-    { id:'ocean',   name:'💎 深海蓝', gold:'#a8d5e5', purple:'#3a86ff' },
-  ];
-  function openThemeManager() {
-    let cardsHtml = '';
-    ADMIN_THEMES.forEach(function(t) {
-      cardsHtml += '<div data-theme="'+t.id+'" style="padding:16px;border:2px solid transparent;border-radius:12px;cursor:pointer;background:linear-gradient(135deg,'+t.gold+'22,'+t.purple+'22);text-align:center;transition:all 0.2s;" onclick="V7Admin.applyTheme(\''+t.id+'\')">' +
-        '<div style="font-size:1.8rem;margin-bottom:6px;">'+t.name.split(' ')[0]+'</div>' +
-        '<div style="font-size:0.85rem;">'+t.name.split(' ')[1]+'</div>' +
-        '<div style="display:flex;gap:4px;justify-content:center;margin-top:8px;">' +
-        '<span style="width:14px;height:14px;border-radius:50%;background:'+t.gold+';"></span>' +
-        '<span style="width:14px;height:14px;border-radius:50%;background:'+t.purple+';"></span></div></div>';
-    });
-    const html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">'+cardsHtml+'</div><p style="margin-top:14px;font-size:0.75rem;opacity:0.7;">点击主题即时预览</p>';
-    if (window.V6 && V6.modal) V6.modal('🎨 主题管理', html);
-  }
-  function applyTheme(id) {
-    localStorage.setItem('taluo-theme', id);
-    document.body.setAttribute('data-theme', 'liquid ' + id);
-    if (window.V6 && V6.toast) V6.toast('🎨 已切换到 ' + id);
-    logAction('applyTheme', id);
   }
 
   /* ========== A112 公告发布 ========== */
@@ -704,7 +671,6 @@
     testSensitiveWords: testSensitiveWords,
     exportSensitive: exportSensitive, importSensitive: importSensitive,
     addCardImageHover: addCardImageHover, addStatusBar: addStatusBar, addHomeBtn: addHomeBtn,
-    openThemeManager: openThemeManager, applyTheme: applyTheme,
     openAnnouncement: openAnnouncement, saveAnnouncement: saveAnnouncement, clearAnnouncement: clearAnnouncement,
     openDailyCard: openDailyCard, saveDailyCard: saveDailyCard,
     openAchievements: openAchievements, toggleAchievement: toggleAchievement, resetAchievements: resetAchievements,
@@ -727,7 +693,6 @@
       v7nav.style.cssText = 'margin-top:20px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);';
       v7nav.innerHTML =
         '<div style="font-size:0.7rem;opacity:0.5;margin-bottom:6px;">v7 新功能</div>' +
-        '<button onclick="V7Admin.openThemeManager()" style="width:100%;margin:2px 0;padding:8px;background:rgba(255,255,255,0.05);border:1px solid transparent;border-radius:6px;color:var(--text-white);cursor:pointer;text-align:left;">🎨 主题管理</button>' +
         '<button onclick="V7Admin.openAnnouncement()" style="width:100%;margin:2px 0;padding:8px;background:rgba(255,255,255,0.05);border:1px solid transparent;border-radius:6px;color:var(--text-white);cursor:pointer;text-align:left;">📢 公告发布</button>' +
         '<button onclick="V7Admin.openDailyCard()" style="width:100%;margin:2px 0;padding:8px;background:rgba(255,255,255,0.05);border:1px solid transparent;border-radius:6px;color:var(--text-white);cursor:pointer;text-align:left;">🎯 每日卡指定</button>' +
         '<button onclick="V7Admin.openAchievements()" style="width:100%;margin:2px 0;padding:8px;background:rgba(255,255,255,0.05);border:1px solid transparent;border-radius:6px;color:var(--text-white);cursor:pointer;text-align:left;">🏆 成就管理</button>' +

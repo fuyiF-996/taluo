@@ -2,7 +2,7 @@
  * cabbage塔罗 Service Worker —— PWA 离线支持
  * 策略：stale-while-revalidate 缓存静态资源；network-first 缓存 API
  */
-const CACHE_NAME = "tarot-v4";
+const CACHE_NAME = "tarot-v8";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -11,6 +11,7 @@ const STATIC_ASSETS = [
   "./stats.html",
   "./admin.html",
   "./css/style.css",
+  "./css/v6-extras.css",
   "./js/tarot-data.js",
   "./js/config-sync.js",
   "./js/settings.js",
@@ -19,8 +20,13 @@ const STATIC_ASSETS = [
   "./js/library.js",
   "./js/stats.js",
   "./js/app.js",
+  "./js/extras.js",
+  "./js/extras-v6.js",
+  "./js/admin.js",
+  "./js/admin-v6-extras.js",
+  "./js/dev.js",
   "./manifest.webmanifest",
-  // 预缓存 4 张大阿卡那常用卡（确保首屏体验）
+  // 预缓存 2 张大阿卡那常用卡（确保首屏体验）
   "./images-webp/00-TheFool.webp",
   "./images-webp/21-TheWorld.webp",
 ];

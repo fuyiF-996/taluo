@@ -630,6 +630,20 @@ body::after {
 
 /* ==================== ✨ C3: 月运/年运牌阵 ==================== */
 /* 月运：6 张卡，3 列 2 行 */
+/* 关系六牌阵：6 张卡，3 列 × 2 行（桌面） */
+.cards-display.relationship-spread {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 640px;
+  margin: 20px auto;
+}
+.cards-display.relationship-spread .card-3d {
+  width: 160px;
+  height: 260px;
+  margin: 0 auto;
+}
+
 .cards-display.monthly-spread {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1533,6 +1547,7 @@ body[data-theme="liquid"] ::-webkit-scrollbar-track {
     max-width: 100%;
   }
   .spread-selector { flex-direction: column; }
+  .cards-display.relationship-spread { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .cards-display.monthly-spread { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .cards-display.yearly-spread { grid-template-columns: repeat(4, 1fr); gap: 6px; }
   .cards-display.yearly-spread .card-3d { width: 70px; height: 112px; }
