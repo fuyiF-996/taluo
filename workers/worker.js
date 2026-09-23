@@ -164,6 +164,65 @@ async function handleRequest(request, env, ctx) {
       } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
     }
 
+    // ======== v7: 公告 ========
+    if (method === "GET" && pathname === "/announcement") {
+      const data = await env.TALUO_KV.get("ANNOUNCEMENT");
+      return jsonResp({ ok: true, announcement: data ? JSON.parse(data) : { text: "" } }, cors);
+    }
+    if (method === "POST" && pathname === "/announcement") {
+      try {
+        const body = await request.json();
+        await env.TALUO_KV.put("ANNOUNCEMENT", JSON.stringify(body));
+        return jsonResp({ ok: true }, cors);
+      } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
+    }
+
+    // ======== v7: 卡牌列表 ========
+    if (method === "GET" && pathname === "/cards") {
+      // 从 TAROT_DATA KV 读卡名列表，或返回固定列表
+      let cards = [];
+      const raw = await env.TALUO_KV.get("TAROT_DATA");
+      if (raw) {
+        try {
+          const arr = JSON.parse(raw);
+          cards = arr.map(c => ({ name: c.name || c }));
+        } catch(e) {}
+      }
+      // 若无 KV 缓存，返回空（前端从本地 tarot-data.js 加载）
+      return jsonResp({ ok: true, cards: cards, note: "前端优先使用本地 tarot-data.js" }, cors);
+    }
+
+    // ======== v7: 每日卡 ========
+    if (method === "GET" && pathname === "/daily-card") {
+      const today = new Date().toISOString().slice(0,10);
+      const data = await env.TALUO_KV.get("DAILY_CARD_" + today);
+      if (data) return jsonResp({ ok: true, card: JSON.parse(data), cached: true }, cors);
+      // 没缓存：从 ANNOUNCEMENT DAILY 字段取，或随机
+      const annStr = await env.TALUO_KV.get("ANNOUNCEMENT");
+      let specified = null;
+      if (annStr) {
+        try { specified = JSON.parse(annStr).dailyCard || null; } catch(e) {}
+      }
+      if (specified) {
+        await env.TALUO_KV.put("DAILY_CARD_" + today, JSON.stringify({ name: specified, date: today }));
+        return jsonResp({ ok: true, card: { name: specified, date: today }, cached: false }, cors);
+      }
+      return jsonResp({ ok: true, card: null, hint: "请在 Admin 指定每日卡，或前端用本地随机" }, cors);
+    }
+
+    // ======== v7: 敏感词 ========
+    if (method === "GET" && pathname === "/sensitive-words") {
+      const data = await env.TALUO_KV.get("SENSITIVE_WORDS");
+      return jsonResp({ ok: true, words: data ? JSON.parse(data) : [] }, cors);
+    }
+    if (method === "POST" && pathname === "/sensitive-words") {
+      try {
+        const body = await request.json();
+        await env.TALUO_KV.put("SENSITIVE_WORDS", JSON.stringify(body.words || body));
+        return jsonResp({ ok: true }, cors);
+      } catch (e) { return jsonResp({ ok: false, error: e.message }, cors, 400); }
+    }
+
     // 其他 → 404
     return jsonResp({ ok: false, error: "Not Found" }, cors, 404);
 

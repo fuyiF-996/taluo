@@ -279,3 +279,198 @@
   }
 
 })();
+
+/* ==========================================================================
+   v7 — 主题系统 + 微交互 JS（window.V7 命名空间）
+   ========================================================================== */
+(function() {
+  'use strict';
+
+  const THEMES = ['cosmic', 'moonlit', 'ember', 'jade', 'ocean'];
+  const THEME_NAMES = {
+    cosmic: '🔮 星空紫', moonlit: '🌙 月夜青',
+    ember: '🔥 赤焰', jade: '🍃 翠玉', ocean: '💎 深海蓝'
+  };
+
+  /* ========== 主题初始化（确保液态玻璃永远开） ========== */
+  function initTheme() {
+    const saved = localStorage.getItem('taluo-theme') || 'cosmic';
+    // 强制 data-theme 包含 "liquid" — 液态玻璃永远开
+    document.body.setAttribute('data-theme', 'liquid ' + saved);
+  }
+
+  /* ========== 主题切换 ========== */
+  function switchTheme() {
+    const current = localStorage.getItem('taluo-theme') || 'cosmic';
+    const idx = THEMES.indexOf(current);
+    const next = THEMES[(idx + 1) % THEMES.length];
+    localStorage.setItem('taluo-theme', next);
+    document.body.setAttribute('data-theme', 'liquid ' + next);
+    if (window.V6 && V6.toast) V6.toast(THEME_NAMES[next] + ' ✨', 'info');
+    return next;
+  }
+
+  /* ========== 主题切换按钮（右上角 🎨） ========== */
+  function addThemeBtn() {
+    if (document.querySelector('.v7-theme-btn')) return;
+    const btn = document.createElement('button');
+    btn.className = 'v7-theme-btn';
+    btn.innerHTML = '🎨';
+    btn.title = '切换主题 (点我)';
+    btn.setAttribute('aria-label', '切换主题');
+    btn.addEventListener('click', switchTheme);
+    document.body.appendChild(btn);
+  }
+
+  /* ========== Card tilt 跟随鼠标 ========== */
+  function setupTilt() {
+    document.addEventListener('mousemove', function(e) {
+      const card = e.target.closest('.card-3d');
+      if (!card || card.classList.contains('flip') || card.classList.contains('flipped')) return;
+      const rect = card.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const rx = (e.clientY - cy) / (rect.height / 2) * -15;
+      const ry = (e.clientX - cx) / (rect.width / 2) * 15;
+      card.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
+    });
+    document.addEventListener('mouseleave', function(e) {
+      const card = e.target.closest('.card-3d');
+      if (card) card.style.transform = '';
+    });
+  }
+
+  /* ========== Confetti 金色粒子 ========== */
+  function fireConfetti() {
+    const colors = ['#d4af37', '#f0d060', '#b8960f', '#fff8dc', '#ffd700'];
+    for (let i = 0; i < 30; i++) {
+      const el = document.createElement('div');
+      el.className = 'v7-confetti';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.animationDuration = (2 + Math.random() * 2) + 's';
+      el.style.animationDelay = Math.random() * 0.5 + 's';
+      el.style.width = (4 + Math.random() * 6) + 'px';
+      el.style.height = el.style.width;
+      el.style.borderRadius = Math.random() > 0.5 ? '50%' : '1px';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4500);
+    }
+  }
+
+  /* ========== 监听三张卡全翻完 → confetti ========== */
+  function setupConfettiTrigger() {
+    const observer = new MutationObserver(function() {
+      const cards = document.querySelectorAll('.card-container.flipped, .card-3d.flipped');
+      if (cards.length >= 3 && !document.body.dataset.confettiFired) {
+        document.body.dataset.confettiFired = '1';
+        setTimeout(fireConfetti, 800);
+        setTimeout(() => delete document.body.dataset.confettiFired, 5000);
+      }
+    });
+    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
+  }
+
+  /* ========== 字号切换 ========== */
+  const FONT_SIZES = ['s', 'm', 'l', 'xl'];
+  function cycleFontSize() {
+    const cur = localStorage.getItem('taluo-font') || 'm';
+    const idx = FONT_SIZES.indexOf(cur);
+    const next = FONT_SIZES[(idx + 1) % FONT_SIZES.length];
+    localStorage.setItem('taluo-font', next);
+    document.documentElement.setAttribute('data-font-size', next);
+    if (window.V6 && V6.toast) {
+      const labels = { s: '字号 小', m: '字号 中', l: '字号 大', xl: '字号 特大' };
+      V6.toast('🔤 ' + labels[next], 'info');
+    }
+  }
+
+  /* ========== 语音朗读 ========== */
+  function speak(text) {
+    if (!('speechSynthesis' in window)) {
+      if (window.V6 && V6.toast) V6.toast('浏览器不支持语音', 'error');
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN'; u.rate = 0.9; u.pitch = 1;
+    window.speechSynthesis.speak(u);
+  }
+
+  function addSpeakButtons() {
+    document.querySelectorAll('.result-card, .card-result, .interpretation, .v6-keyword-chip').forEach(function(el) {
+      if (el.dataset.speakBound) return;
+      el.dataset.speakBound = '1';
+      const text = el.textContent.trim();
+      const btn = document.createElement('button');
+      btn.className = 'v7-speak-btn';
+      btn.innerHTML = '🔊 朗读';
+      btn.addEventListener('click', function(e) { e.stopPropagation(); speak(text.slice(0, 200)); });
+      el.parentNode.insertBefore(btn, el.nextSibling);
+    });
+  }
+
+  /* ========== 大师模式彩蛋：连点 LOGO 7 次 ========== */
+  function setupMasterEaster() {
+    let count = 0, timer = null;
+    const logo = document.querySelector('.tarot-logo, h1, .site-title, header h1');
+    if (!logo) return;
+    logo.style.cursor = 'pointer';
+    logo.addEventListener('click', function() {
+      count++;
+      clearTimeout(timer);
+      timer = setTimeout(() => count = 0, 2000);
+      if (count >= 7) {
+        document.body.classList.add('v7-master');
+        count = 0;
+        if (window.V6 && V6.toast) V6.toast('🎩 大师模式已开启！', 'info');
+      }
+    });
+  }
+
+  /* ========== 快捷键 Ctrl++/-/0 调字号 ========== */
+  function setupFontShortcut() {
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); cycleFontSize(); }
+      if (e.ctrlKey && e.key === '-') { e.preventDefault(); cycleFontSize(); }
+      if (e.ctrlKey && e.key === '0') { e.preventDefault(); localStorage.removeItem('taluo-font'); document.documentElement.removeAttribute('data-font-size'); }
+      // Ctrl+Shift+T 切主题
+      if (e.ctrlKey && e.shiftKey && (e.key === 'T' || e.key === 't')) { e.preventDefault(); switchTheme(); }
+    });
+  }
+
+  /* ========== 初始化 ========== */
+  function init() {
+    initTheme();
+    addThemeBtn();
+    setupTilt();
+    setupConfettiTrigger();
+    setupFontShortcut();
+    setupMasterEaster();
+
+    // 应用保存的字号
+    const savedFont = localStorage.getItem('taluo-font');
+    if (savedFont) document.documentElement.setAttribute('data-font-size', savedFont);
+
+    // DOMContentLoaded 后加朗读按钮
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', addSpeakButtons);
+    } else {
+      addSpeakButtons();
+    }
+
+    // 监听结果页出现再加朗读按钮
+    const ro = new MutationObserver(function() { addSpeakButtons(); });
+    ro.observe(document.body, { childList: true, subtree: true });
+
+    console.log('[v7] 主题:' + (localStorage.getItem('taluo-theme') || 'cosmic') + ' | 已加载');
+  }
+
+  window.V7 = { init, switchTheme, cycleFontSize, speak, THEMES, THEME_NAMES };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
